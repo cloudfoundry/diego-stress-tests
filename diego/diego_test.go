@@ -102,7 +102,7 @@ func curlApp(appName, outputFile string) {
 		file.Close()
 	}()
 
-	exitCode = runner.Run("bash", "-c", fmt.Sprintf("curl %s.%s &>> %s", appName, os.Getenv("CF_APPS_DOMAIN"), outputFile)).Wait().ExitCode()
+	exitCode = runner.Run("bash", "-c", fmt.Sprintf("curl -f %s.%s &>> %s", appName, os.Getenv("CF_APPS_DOMAIN"), outputFile)).Wait().ExitCode()
 }
 
 func pushApp(appName, path, instances, memory, outputFile string) {
