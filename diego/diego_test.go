@@ -3,6 +3,7 @@ package diego_test
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,14 @@ type round struct {
 }
 
 var _ = Describe("Launching and Running many CF applications", func() {
+	BeforeEach(func() {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	})
+
+	AfterEach(func() {
+		runtime.GOMAXPROCS(1)
+	})
+
 	It("handles the load", func() {
 		rounds := make([]round, 0, 40)
 		for i := 0; i < 10; i++ {
