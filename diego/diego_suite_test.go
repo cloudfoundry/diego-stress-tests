@@ -41,10 +41,6 @@ func TestApplications(t *testing.T) {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	AfterSuite(func() {
-		environment.Teardown()
-	})
-
 	componentName := "Diego"
 
 	rs := []Reporter{}
