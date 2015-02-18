@@ -58,7 +58,7 @@ var _ = Describe("Launching and Running many CF applications", func() {
 
 		startTime := time.Now()
 		for _, round := range rounds {
-			pushRound(round)
+			executeRound(round)
 		}
 		endTime := time.Now()
 
@@ -161,7 +161,7 @@ func pushApp(appName, path, instances, memory, outputFile string) {
 	}
 }
 
-func pushRound(r round) {
+func executeRound(r round) {
 	westleyNames := make([]string, r.westley)
 	for i := 0; i < r.westley; i++ {
 		guid, err := uuid.NewV4()
