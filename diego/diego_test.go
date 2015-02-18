@@ -20,39 +20,40 @@ type round struct {
 	westley, max, princess, humperdink int
 }
 
-var _ = Describe("Stress", func() {
-	It("is not very stressful", func() {
-		rounds := make([]round, 0, 1)
-		for i := 0; i < 1; i++ {
-			rounds = append(rounds, round{
-				name:       fmt.Sprintf("round-a-%d", i),
-				westley:    1,
-				max:        1,
-				princess:   1,
-				humperdink: 2,
-			},
-			// {
-			// 	name:       fmt.Sprintf("round-b-%d", i),
-			// 	westley:    13,
-			// 	max:        3,
-			// 	princess:   0,
-			// 	humperdink: 3,
-			// },
-			// {
-			// 	name:       fmt.Sprintf("round-c-%d", i),
-			// 	westley:    14,
-			// 	max:        3,
-			// 	princess:   1,
-			// 	humperdink: 2,
-			// },
-			// {
-			// 	name:       fmt.Sprintf("round-d-%d", i),
-			// 	westley:    14,
-			// 	max:        3,
-			// 	princess:   0,
-			// 	humperdink: 2,
-			// },
-			)
+var _ = Describe("Launching and Running many CF applications", func() {
+	It("handles the load", func() {
+		rounds := make([]round, 0, 40)
+		for i := 0; i < 10; i++ {
+			rounds = append(rounds, []round{
+				{
+					name:       fmt.Sprintf("round-a-%d", i),
+					westley:    13,
+					max:        3,
+					princess:   1,
+					humperdink: 3,
+				},
+				{
+					name:       fmt.Sprintf("round-b-%d", i),
+					westley:    13,
+					max:        3,
+					princess:   0,
+					humperdink: 3,
+				},
+				{
+					name:       fmt.Sprintf("round-c-%d", i),
+					westley:    14,
+					max:        3,
+					princess:   1,
+					humperdink: 2,
+				},
+				{
+					name:       fmt.Sprintf("round-d-%d", i),
+					westley:    14,
+					max:        3,
+					princess:   0,
+					humperdink: 2,
+				},
+			}...)
 		}
 
 		startTime := time.Now()
