@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	CF_PUSH_TIMEOUT    = 30 * time.Second
-	CF_LOGS_TIMEOUT    = 5 * time.Second
-	CF_SET_ENV_TIMEOUT = 5 * time.Second
-	CF_START_TIMEOUT   = 2 * time.Minute
+	CF_PUSH_TIMEOUT    = 1 * time.Minute
+	CF_LOGS_TIMEOUT    = 10 * time.Second
+	CF_SET_ENV_TIMEOUT = 10 * time.Second
+	CF_START_TIMEOUT   = 4 * time.Minute
 	LONG_CURL_TIMEOUT  = 4 * time.Minute
 
 	DIEGO_STAGE_BETA = "DIEGO_STAGE_BETA"
