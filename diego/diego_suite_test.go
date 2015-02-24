@@ -37,6 +37,7 @@ func TestApplications(t *testing.T) {
 
 	BeforeSuite(func() {
 		environment.Setup()
+		context.SetRunawayQuota()
 		err := os.RemoveAll(stress_test_data_dir)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
