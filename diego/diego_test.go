@@ -212,6 +212,7 @@ func executeRound(r round) {
 		westley := westley
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			pushApp(westley, "../assets/apps/westley", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, westley))
 			wg.Done()
 		}()
@@ -221,6 +222,7 @@ func executeRound(r round) {
 		max := max
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			pushApp(max, "../assets/apps/max", "2", "512M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, max))
 			wg.Done()
 		}()
@@ -230,6 +232,7 @@ func executeRound(r round) {
 		princess := princess
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			pushApp(princess, "../assets/apps/princess", "4", "1024M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, princess))
 			wg.Done()
 		}()
@@ -239,6 +242,7 @@ func executeRound(r round) {
 		humperdink := humperdink
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			pushApp(humperdink, "../assets/apps/humperdink", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, humperdink))
 			wg.Done()
 		}()
@@ -259,6 +263,7 @@ func executeRound(r round) {
 		westley := westley
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			curlApp(westley, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, westley))
 			wg.Done()
 		}()
@@ -268,6 +273,7 @@ func executeRound(r round) {
 		max := max
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			curlApp(max, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, max))
 			wg.Done()
 		}()
@@ -277,6 +283,7 @@ func executeRound(r round) {
 		princess := princess
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			curlApp(princess, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, princess))
 			wg.Done()
 		}()
@@ -286,6 +293,7 @@ func executeRound(r round) {
 		humperdink := humperdink
 		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
 			curlApp(humperdink, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, humperdink))
 			wg.Done()
 		}()
