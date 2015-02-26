@@ -80,7 +80,7 @@ var _ = Describe("Launching and Running many CF applications", func() {
 })
 
 func cf(outputFilePath string, timeout time.Duration, args ...string) int {
-	sess := runner.Run("bash", "-c", fmt.Sprintf("cf %s &>> %s", strings.Join(args, " "), outputFilePath))
+	sess := runner.Run("bash", "-c", fmt.Sprintf("CF_TRACE=true cf %s &>> %s", strings.Join(args, " "), outputFilePath))
 
 	return sess.Wait(timeout).ExitCode()
 }
