@@ -167,18 +167,41 @@ func executeRound(r round) {
 
 	wg := sync.WaitGroup{}
 	for _, name := range westleyNames {
-		goPushAndCurl(name, "1", "128M", r.name, "westley", wg)
+		wg.Add(1)
+		go func() {
+			defer GinkgoRecover()
+			defer wg.Done()
+			pushApp(name, "../assets/apps/westley", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
+		}()
 	}
 	for _, name := range maxNames {
-		goPushAndCurl(name, "2", "512M", r.name, "max", wg)
+		wg.Add(1)
+		go func() {
+			defer GinkgoRecover()
+			defer wg.Done()
+			pushApp(name, "../assets/apps/max", "2", "512", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
+		}()
 	}
 	for _, name := range princessNames {
-		goPushAndCurl(name, "4", "1024M", r.name, "princess", wg)
+		wg.Add(1)
+		go func() {
+			defer GinkgoRecover()
+			defer wg.Done()
+			pushApp(name, "../assets/apps/westley", "4", "1024M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
+		}()
 	}
 	for _, name := range humperdinkNames {
-		goPushAndCurl(name, "1", "128M", r.name, "humperdink", wg)
+		wg.Add(1)
+		go func() {
+			defer GinkgoRecover()
+			defer wg.Done()
+			pushApp(name, "../assets/apps/humperdink", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
+		}()
 	}
-
 	wg.Wait()
 }
 
@@ -192,16 +215,6 @@ func generateNames(prefix string, numNames int) []string {
 	}
 
 	return names
-}
-
-func goPushAndCurl(appName, instancesArg, memoryArg, roundName, assetName string, wg sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer GinkgoRecover()
-		defer wg.Done()
-		pushApp(appName, fmt.Sprintf("../assets/apps/%s", assetName), instancesArg, memoryArg, fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, roundName, appName))
-		curlApp(appName, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, roundName, appName))
-	}()
 }
 
 func finalizeLogs(outputFile, appName string, startTime time.Time, exitCode int) {
