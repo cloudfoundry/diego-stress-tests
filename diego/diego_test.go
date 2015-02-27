@@ -94,20 +94,7 @@ func curlApp(appName, outputFile string) {
 	var exitCode int
 
 	defer func() {
-		cf(outputFile, CF_LOGS_TIMEOUT, "logs", appName, "--recent")
-
-		endTime := time.Now()
-		duration := endTime.Sub(startTime)
-
-		result := ""
-		if exitCode == 0 {
-			result = "SUCCESS"
-		} else {
-			result = "FAILURE"
-		}
-
-		Ω(runner.Run("bash", "-c", fmt.Sprintf("echo '%s: %v' &>> %s", result, duration, outputFile)).Wait()).Should(Exit(0))
-
+		finalizeLogs(outputFile, appName, startTime, exitCode)
 		file.Close()
 	}()
 
@@ -135,20 +122,7 @@ func pushApp(appName, path, instances, memory, outputFile string) {
 	var exitCode int
 
 	defer func() {
-		cf(outputFile, CF_LOGS_TIMEOUT, "logs", appName, "--recent")
-
-		endTime := time.Now()
-		duration := endTime.Sub(startTime)
-
-		result := ""
-		if exitCode == 0 {
-			result = "SUCCESS"
-		} else {
-			result = "FAILURE"
-		}
-
-		Ω(runner.Run("bash", "-c", fmt.Sprintf("echo '%s: %v' &>> %s", result, duration, outputFile)).Wait()).Should(Exit(0))
-
+		finalizeLogs(outputFile, appName, startTime, exitCode)
 		file.Close()
 	}()
 
@@ -183,85 +157,65 @@ func pushApp(appName, path, instances, memory, outputFile string) {
 }
 
 func executeRound(r round) {
-	westleyNames := make([]string, r.westley)
-	for i := 0; i < r.westley; i++ {
-		guid, err := uuid.NewV4()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		westleyNames[i] = fmt.Sprintf("westley-%s", guid)
-	}
-
-	maxNames := make([]string, r.max)
-	for i := 0; i < r.max; i++ {
-		guid, err := uuid.NewV4()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		maxNames[i] = fmt.Sprintf("max-%s", guid)
-	}
-
-	humperdinkNames := make([]string, r.humperdink)
-	for i := 0; i < r.humperdink; i++ {
-		guid, err := uuid.NewV4()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		humperdinkNames[i] = fmt.Sprintf("humperdink-%s", guid)
-	}
-
-	princessNames := make([]string, r.princess)
-	for i := 0; i < r.princess; i++ {
-		guid, err := uuid.NewV4()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		princessNames[i] = fmt.Sprintf("princess-%s", guid)
-	}
+	westleyNames := generateNames("westley", r.westley)
+	maxNames := generateNames("max", r.max)
+	princessNames := generateNames("princess", r.princess)
+	humperdinkNames := generateNames("humperdink", r.humperdink)
 
 	err := os.MkdirAll(fmt.Sprintf("%s/%s", stress_test_data_dir, r.name), 0755)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	wg := sync.WaitGroup{}
-	for _, westley := range westleyNames {
-		westley := westley
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(westley, "../assets/apps/westley", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, westley))
-			curlApp(westley, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, westley))
-			wg.Done()
-		}()
+	for _, name := range westleyNames {
+		goPushAndCurl(name, "1", "128M", r.name, "westley", wg)
 	}
-
-	for _, max := range maxNames {
-		max := max
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(max, "../assets/apps/max", "2", "512M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, max))
-			curlApp(max, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, max))
-			wg.Done()
-		}()
+	for _, name := range maxNames {
+		goPushAndCurl(name, "2", "512M", r.name, "max", wg)
 	}
-
-	for _, princess := range princessNames {
-		princess := princess
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(princess, "../assets/apps/princess", "4", "1024M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, princess))
-			curlApp(princess, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, princess))
-			wg.Done()
-		}()
+	for _, name := range princessNames {
+		goPushAndCurl(name, "4", "1024M", r.name, "princess", wg)
 	}
-
-	for _, humperdink := range humperdinkNames {
-		humperdink := humperdink
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(humperdink, "../assets/apps/humperdink", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, humperdink))
-			curlApp(humperdink, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, humperdink))
-			wg.Done()
-		}()
+	for _, name := range humperdinkNames {
+		goPushAndCurl(name, "1", "128M", r.name, "humperdink", wg)
 	}
 
 	wg.Wait()
+}
+
+func generateNames(prefix string, numNames int) []string {
+	names := make([]string, numNames)
+	for i := 0; i < numNames; i++ {
+		guid, err := uuid.NewV4()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		names[i] = fmt.Sprintf("%s-%s", prefix, guid)
+	}
+
+	return names
+}
+
+func goPushAndCurl(appName, instancesArg, memoryArg, roundName, assetName string, wg sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		pushApp(appName, fmt.Sprintf("../assets/apps/%s", assetName), instancesArg, memoryArg, fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, roundName, appName))
+		curlApp(appName, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, roundName, appName))
+	}()
+}
+
+func finalizeLogs(outputFile, appName string, startTime time.Time, exitCode int) {
+	cf(outputFile, CF_LOGS_TIMEOUT, "logs", appName, "--recent")
+
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+
+	result := ""
+	if exitCode == 0 {
+		result = "SUCCESS"
+	} else {
+		result = "FAILURE"
+	}
+
+	Ω(runner.Run("bash", "-c", fmt.Sprintf("echo '%s: %v' &>> %s", result, duration, outputFile)).Wait()).Should(Exit(0))
 }
