@@ -35,28 +35,28 @@ var _ = Describe("Launching and Running many CF applications", func() {
 		for i := 0; i < 10; i++ {
 			rounds = append(rounds, []round{
 				{
-					name:       fmt.Sprintf("round-a-%d", i),
+					name:       fmt.Sprintf("round-%d-a", i),
 					westley:    13,
 					max:        3,
 					princess:   1,
 					humperdink: 3,
 				},
 				{
-					name:       fmt.Sprintf("round-b-%d", i),
+					name:       fmt.Sprintf("round-%d-b", i),
 					westley:    13,
 					max:        3,
 					princess:   0,
 					humperdink: 3,
 				},
 				{
-					name:       fmt.Sprintf("round-c-%d", i),
+					name:       fmt.Sprintf("round-%d-c", i),
 					westley:    14,
 					max:        3,
 					princess:   1,
 					humperdink: 2,
 				},
 				{
-					name:       fmt.Sprintf("round-d-%d", i),
+					name:       fmt.Sprintf("round-%d-d", i),
 					westley:    14,
 					max:        3,
 					princess:   0,
