@@ -111,7 +111,19 @@ func curlApp(appName, outputFile string) {
 		file.Close()
 	}()
 
-	exitCode = runner.Run("bash", "-c", fmt.Sprintf("curl -f %s.%s &>> %s", appName, os.Getenv("CF_APPS_DOMAIN"), outputFile)).Wait().ExitCode()
+	timer := time.NewTimer(CURL_RETRY_TIMEOUT).C
+	for {
+		exitCode = runner.Run("bash", "-c", fmt.Sprintf("curl -f %s.%s &>> %s", appName, os.Getenv("CF_APPS_DOMAIN"), outputFile)).Wait(CURL_TIMEOUT).ExitCode()
+		if exitCode == 0 {
+			return
+		}
+
+		select {
+		case <-timer:
+			return
+		default:
+		}
+	}
 }
 
 func pushApp(appName, path, instances, memory, outputFile string) {

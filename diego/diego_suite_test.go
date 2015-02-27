@@ -16,7 +16,8 @@ const (
 	CF_LOGS_TIMEOUT    = 10 * time.Second
 	CF_SET_ENV_TIMEOUT = 10 * time.Second
 	CF_START_TIMEOUT   = 4 * time.Minute
-	LONG_CURL_TIMEOUT  = 4 * time.Minute
+	CURL_RETRY_TIMEOUT = 20 * time.Second
+	CURL_TIMEOUT       = 5 * time.Second
 
 	DIEGO_STAGE_BETA = "DIEGO_STAGE_BETA"
 	DIEGO_RUN_BETA   = "DIEGO_RUN_BETA"
