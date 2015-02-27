@@ -180,7 +180,7 @@ func executeRound(r round) {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			pushApp(name, "../assets/apps/max", "2", "512", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			pushApp(name, "../assets/apps/max", "2", "512M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
 			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
 		}()
 	}
