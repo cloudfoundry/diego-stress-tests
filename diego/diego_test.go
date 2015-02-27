@@ -206,7 +206,6 @@ func executeRound(r round) {
 	err := os.MkdirAll(fmt.Sprintf("%s/%s", stress_test_data_dir, r.name), 0755)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	startTime := time.Now()
 	wg := sync.WaitGroup{}
 	for _, westley := range westleyNames {
 		westley := westley
@@ -214,56 +213,6 @@ func executeRound(r round) {
 		go func() {
 			defer GinkgoRecover()
 			pushApp(westley, "../assets/apps/westley", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, westley))
-			wg.Done()
-		}()
-	}
-
-	for _, max := range maxNames {
-		max := max
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(max, "../assets/apps/max", "2", "512M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, max))
-			wg.Done()
-		}()
-	}
-
-	for _, princess := range princessNames {
-		princess := princess
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(princess, "../assets/apps/princess", "4", "1024M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, princess))
-			wg.Done()
-		}()
-	}
-
-	for _, humperdink := range humperdinkNames {
-		humperdink := humperdink
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
-			pushApp(humperdink, "../assets/apps/humperdink", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, humperdink))
-			wg.Done()
-		}()
-	}
-
-	wg.Wait()
-	endTime := time.Now()
-
-	allPushesFile, err := os.Create(fmt.Sprintf("%s/%s/all_pushes", stress_test_data_dir, r.name))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	defer allPushesFile.Close()
-	allPushesFile.WriteString(fmt.Sprintf("start: %s\nend: %s\nduration: %s\n", startTime, endTime, endTime.Sub(startTime)))
-
-	startTime = time.Now()
-	wg = sync.WaitGroup{}
-	for _, westley := range westleyNames {
-		westley := westley
-		wg.Add(1)
-		go func() {
-			defer GinkgoRecover()
 			curlApp(westley, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, westley))
 			wg.Done()
 		}()
@@ -274,6 +223,7 @@ func executeRound(r round) {
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
+			pushApp(max, "../assets/apps/max", "2", "512M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, max))
 			curlApp(max, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, max))
 			wg.Done()
 		}()
@@ -284,6 +234,7 @@ func executeRound(r round) {
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
+			pushApp(princess, "../assets/apps/princess", "4", "1024M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, princess))
 			curlApp(princess, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, princess))
 			wg.Done()
 		}()
@@ -294,17 +245,11 @@ func executeRound(r round) {
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
+			pushApp(humperdink, "../assets/apps/humperdink", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, humperdink))
 			curlApp(humperdink, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, humperdink))
 			wg.Done()
 		}()
 	}
 
 	wg.Wait()
-	endTime = time.Now()
-
-	allCurlsFile, err := os.Create(fmt.Sprintf("%s/%s/all_curls", stress_test_data_dir, r.name))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	defer allCurlsFile.Close()
-	allCurlsFile.WriteString(fmt.Sprintf("start: %s\nend: %s\nduration: %s\n", startTime, endTime, endTime.Sub(startTime)))
 }
