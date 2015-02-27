@@ -167,6 +167,7 @@ func executeRound(r round) {
 
 	wg := sync.WaitGroup{}
 	for _, name := range westleyNames {
+		name := name
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
@@ -176,6 +177,7 @@ func executeRound(r round) {
 		}()
 	}
 	for _, name := range maxNames {
+		name := name
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
@@ -185,6 +187,7 @@ func executeRound(r round) {
 		}()
 	}
 	for _, name := range princessNames {
+		name := name
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
@@ -194,6 +197,7 @@ func executeRound(r round) {
 		}()
 	}
 	for _, name := range humperdinkNames {
+		name := name
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
