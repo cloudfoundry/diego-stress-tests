@@ -113,20 +113,20 @@ func curlApp(appName, outputFile string) {
 	}
 }
 
-func pushApp(appName, path, instances, memory, outputFile string) {
+func pushApp(appName, path, instances, memory, pushFilePath, logFilePath string) {
 	startTime := time.Now()
 
-	file, err := os.Create(outputFile)
+	file, err := os.Create(pushFilePath)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	var exitCode int
 
 	defer func() {
-		finalizeLogs(outputFile, appName, startTime, exitCode)
+		finalizeLogs(pushFilePath, appName, startTime, exitCode)
 		file.Close()
 	}()
 
-	exitCode = cf(outputFile,
+	exitCode = cf(pushFilePath,
 		CF_PUSH_TIMEOUT,
 		"push", appName,
 		"-p", path,
@@ -140,17 +140,24 @@ func pushApp(appName, path, instances, memory, outputFile string) {
 		return
 	}
 
-	exitCode = cf(outputFile, CF_SET_ENV_TIMEOUT, "set-env", appName, DIEGO_STAGE_BETA, "true")
+	logFile, err := os.Create(logFilePath)
+	Ω(err).ShouldNot(HaveOccurred())
+	defer logFile.Close()
+
+	logTailSession := runner.Run("bash", "-c", fmt.Sprintf("cf logs %s &>> %s", appName, logFilePath))
+	defer logTailSession.Kill()
+
+	exitCode = cf(pushFilePath, CF_SET_ENV_TIMEOUT, "set-env", appName, DIEGO_STAGE_BETA, "true")
 	if exitCode != 0 {
 		return
 	}
 
-	exitCode = cf(outputFile, CF_SET_ENV_TIMEOUT, "set-env", appName, DIEGO_RUN_BETA, "true")
+	exitCode = cf(pushFilePath, CF_SET_ENV_TIMEOUT, "set-env", appName, DIEGO_RUN_BETA, "true")
 	if exitCode != 0 {
 		return
 	}
 
-	exitCode = cf(outputFile, CF_START_TIMEOUT, "start", appName)
+	exitCode = cf(pushFilePath, CF_START_TIMEOUT, "start", appName)
 	if exitCode != 0 {
 		return
 	}
@@ -172,7 +179,14 @@ func executeRound(r round) {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			pushApp(name, "../assets/apps/westley", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			pushApp(
+				name,
+				"../assets/apps/westley",
+				"1",
+				"128M",
+				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
+				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
+			)
 			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
 		}()
 	}
@@ -182,7 +196,14 @@ func executeRound(r round) {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			pushApp(name, "../assets/apps/max", "2", "512M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			pushApp(
+				name,
+				"../assets/apps/max",
+				"2",
+				"512M",
+				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
+				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
+			)
 			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
 		}()
 	}
@@ -192,7 +213,14 @@ func executeRound(r round) {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			pushApp(name, "../assets/apps/westley", "4", "1024M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			pushApp(
+				name,
+				"../assets/apps/westley",
+				"4",
+				"1024M",
+				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
+				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
+			)
 			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
 		}()
 	}
@@ -202,7 +230,14 @@ func executeRound(r round) {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			pushApp(name, "../assets/apps/humperdink", "1", "128M", fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name))
+			pushApp(
+				name,
+				"../assets/apps/humperdink",
+				"1",
+				"128M",
+				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
+				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
+			)
 			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
 		}()
 	}
@@ -222,8 +257,6 @@ func generateNames(prefix string, numNames int) []string {
 }
 
 func finalizeLogs(outputFile, appName string, startTime time.Time, exitCode int) {
-	cf(outputFile, CF_LOGS_TIMEOUT, "logs", appName, "--recent")
-
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
 
