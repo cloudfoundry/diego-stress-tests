@@ -147,12 +147,7 @@ func pushApp(appName, path, instances, memory, pushFilePath, logFilePath string)
 	logTailSession := runner.Run("bash", "-c", fmt.Sprintf("cf logs %s &>> %s", appName, logFilePath))
 	defer logTailSession.Kill()
 
-	exitCode = cf(pushFilePath, CF_SET_ENV_TIMEOUT, "set-env", appName, DIEGO_STAGE_BETA, "true")
-	if exitCode != 0 {
-		return
-	}
-
-	exitCode = cf(pushFilePath, CF_SET_ENV_TIMEOUT, "set-env", appName, DIEGO_RUN_BETA, "true")
+	exitCode = cf(pushFilePath, CF_CURL_TIMEOUT, "curl", "v2/apps/`cf app APPLICATION_NAME --guid`", "-X", "PUT", "-d", "'{\"diego\":true}'")
 	if exitCode != 0 {
 		return
 	}
