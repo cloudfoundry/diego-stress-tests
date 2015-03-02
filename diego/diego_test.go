@@ -80,7 +80,7 @@ var _ = Describe("Launching and Running many CF applications", func() {
 })
 
 func cf(outputFilePath string, timeout time.Duration, args ...string) int {
-	sess := runner.Run("bash", "-c", fmt.Sprintf("CF_TRACE=true cf %s &>> %s", strings.Join(args, " "), outputFilePath))
+	sess := runner.Run("bash", "-c", fmt.Sprintf("CF_TRACE=true exec cf %s &>> %s", strings.Join(args, " "), outputFilePath))
 
 	return sess.Wait(timeout).ExitCode()
 }
@@ -100,7 +100,7 @@ func curlApp(appName, outputFile string) {
 
 	timer := time.NewTimer(CURL_RETRY_TIMEOUT).C
 	for {
-		exitCode = runner.Run("bash", "-c", fmt.Sprintf("curl -f %s.%s &>> %s", appName, os.Getenv("CF_APPS_DOMAIN"), outputFile)).Wait(CURL_TIMEOUT).ExitCode()
+		exitCode = runner.Run("bash", "-c", fmt.Sprintf("exec curl -f %s.%s &>> %s", appName, os.Getenv("CF_APPS_DOMAIN"), outputFile)).Wait(CURL_TIMEOUT).ExitCode()
 		if exitCode == 0 {
 			return
 		}
@@ -144,7 +144,7 @@ func pushApp(appName, path, instances, memory, pushFilePath, logFilePath string)
 	Ω(err).ShouldNot(HaveOccurred())
 	defer logFile.Close()
 
-	logTailSession := runner.Run("bash", "-c", fmt.Sprintf("cf logs %s &>> %s", appName, logFilePath))
+	logTailSession := runner.Run("bash", "-c", fmt.Sprintf("exec cf logs %s &>> %s", appName, logFilePath))
 	defer logTailSession.Kill()
 
 	exitCode = cf(pushFilePath, CF_CURL_TIMEOUT, "curl", fmt.Sprintf("v2/apps/`cf app %s --guid`", appName), "-X", "PUT", "-d", "'{\"diego\":true}'")
