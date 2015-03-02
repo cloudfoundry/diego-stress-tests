@@ -171,23 +171,7 @@ func executeRound(r round) {
 			defer GinkgoRecover()
 			defer wg.Done()
 
-			logSession, logFile := pushApp(
-				name,
-				"../assets/apps/westley",
-				"1",
-				"128M",
-				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
-				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
-			)
-
-			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
-
-			if logSession != nil {
-				logSession.Kill()
-			}
-			if logFile != nil {
-				logFile.Close()
-			}
+			pushAndCurl("westley", "1", "128M", r.name, name)
 		}()
 	}
 	for _, name := range maxNames {
@@ -197,23 +181,7 @@ func executeRound(r round) {
 			defer GinkgoRecover()
 			defer wg.Done()
 
-			logSession, logFile := pushApp(
-				name,
-				"../assets/apps/max",
-				"2",
-				"512M",
-				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
-				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
-			)
-
-			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
-
-			if logSession != nil {
-				logSession.Kill()
-			}
-			if logFile != nil {
-				logFile.Close()
-			}
+			pushAndCurl("max", "2", "512M", r.name, name)
 		}()
 	}
 	for _, name := range princessNames {
@@ -223,23 +191,7 @@ func executeRound(r round) {
 			defer GinkgoRecover()
 			defer wg.Done()
 
-			logSession, logFile := pushApp(
-				name,
-				"../assets/apps/westley",
-				"4",
-				"1024M",
-				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
-				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
-			)
-
-			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
-
-			if logSession != nil {
-				logSession.Kill()
-			}
-			if logFile != nil {
-				logFile.Close()
-			}
+			pushAndCurl("princess", "4", "1024M", r.name, name)
 		}()
 	}
 	for _, name := range humperdinkNames {
@@ -249,23 +201,7 @@ func executeRound(r round) {
 			defer GinkgoRecover()
 			defer wg.Done()
 
-			logSession, logFile := pushApp(
-				name,
-				"../assets/apps/humperdink",
-				"1",
-				"128M",
-				fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, r.name, name),
-				fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, r.name, name),
-			)
-
-			curlApp(name, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, r.name, name))
-
-			if logSession != nil {
-				logSession.Kill()
-			}
-			if logFile != nil {
-				logFile.Close()
-			}
+			pushAndCurl("humperdink", "1", "128M", r.name, name)
 		}()
 	}
 	wg.Wait()
@@ -295,4 +231,25 @@ func finalizeLogs(outputFile, appName string, startTime time.Time, exitCode int)
 	}
 
 	Ω(runner.Run("bash", "-c", fmt.Sprintf("echo '%s: %v' &>> %s", result, duration, outputFile)).Wait()).Should(Exit(0))
+}
+
+func pushAndCurl(assetName, instancesArg, memoryArg, roundName, appName string) {
+	logSession, logFile := pushApp(
+		appName,
+		"../assets/apps/"+assetName,
+		instancesArg,
+		memoryArg,
+		fmt.Sprintf("%s/%s/push-%s", stress_test_data_dir, roundName, appName),
+		fmt.Sprintf("%s/%s/log-%s", stress_test_data_dir, roundName, appName),
+	)
+
+	curlApp(appName, fmt.Sprintf("%s/%s/curl-%s", stress_test_data_dir, roundName, appName))
+
+	time.Sleep(2 * time.Second)
+	if logSession != nil {
+		logSession.Kill()
+	}
+	if logFile != nil {
+		logFile.Close()
+	}
 }
