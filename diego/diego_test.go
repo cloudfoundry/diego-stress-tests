@@ -131,7 +131,7 @@ func pushApp(appName, path, instances, memory, pushFilePath, logFilePath string)
 		"push", appName,
 		"-p", path,
 		"--no-start",
-		"-b", "go_buildpack",
+		"-b", "https://github.com/cloudfoundry/go-buildpack.git#v1.2.0",
 		"-i", instances,
 		"-k", "1G",
 		"-m", memory,
