@@ -1,7 +1,0 @@
-{
-  "api": "api.diego-1.cf-app.com",
-  "admin_user": "admin",
-  "admin_password": "REPLACE_ME_WITH_ADMIN_PASSWORD",
-  "apps_domain": "diego-1.cf-app.com",
-  "skip_ssl_validation": true
-}
