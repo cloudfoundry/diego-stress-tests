@@ -2,29 +2,36 @@ package main
 
 import (
 	"fmt"
-	"io"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/pivotal-golang/lager/chug"
+	"code.cloudfoundry.org/lager/chug"
 )
 
-type mapper struct {
-	file io.Reader
+type Mapper interface {
+	Run(in <-chan chug.Entry, metrics chan<- Metric)
 }
 
-func NewMapper(file io.Reader) mapper {
-	return mapper{
-		file: file,
-	}
+type Metric struct {
+	Name      string
+	Tags      []string
+	Value     string
+	Timestamp time.Time
 }
 
-func logMapper(in <-chan chug.Entry) {
+type requestLatencyMapper struct {
 }
 
-func (m mapper) mapper(entry chug.Entry) {
+func NewRequestLatencyMapper() Mapper {
+	return requestLatencyMapper{}
+}
+
+func (m requestLatencyMapper) Run(in <-chan chug.Entry, metrics chan<- Metric) {
 	mapper := make(map[string]chug.Entry)
+
 	for entry := range in {
-		key, err := getKey(entry)
+		key, err := m.getKey(entry)
 		if err != nil {
 			continue
 		}
@@ -36,8 +43,21 @@ func (m mapper) mapper(entry chug.Entry) {
 		if strings.Contains(entry.Log.Message, "request.done") {
 			if servingEntry, ok := mapper[key]; ok {
 				timeDiff := entry.Log.Timestamp.Sub(servingEntry.Log.Timestamp)
-				fmt.Printf("%s: %s \n\n", key, timeDiff)
+				metrics <- Metric{
+					Name:      "RequestLatency",
+					Tags:      []string{fmt.Sprintf("request=%s", entry.Log.Data["request"])},
+					Value:     strconv.FormatInt(int64(timeDiff), 10),
+					Timestamp: servingEntry.Log.Timestamp,
+				}
+				delete(mapper, key)
 			}
 		}
 	}
+}
+
+func (m requestLatencyMapper) getKey(entry chug.Entry) (string, error) {
+	if entry.Log.Data["request"] == nil {
+		return "", fmt.Errorf("not an http request")
+	}
+	return fmt.Sprintf("%s:%s", entry.Log.Data["request"], entry.Log.Session), nil
 }

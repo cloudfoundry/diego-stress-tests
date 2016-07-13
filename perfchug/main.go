@@ -4,42 +4,28 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/pivotal-golang/lager/chug"
+	"code.cloudfoundry.org/lager/chug"
 )
 
-var inputFilePath = flag.String(
-	"inputFilePath",
-	"",
-	"Path to the input log file",
-)
-
-var outputFilePath = flag.String(
-	"outputFilePath",
-	"output.data",
-	"Path to the output log file",
-)
+const metricPrefix = "cf.diego."
 
 func main() {
 	flag.Parse()
 
-	file, err := os.Open(*inputFilePath)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
 	chugOut := make(chan chug.Entry)
-	go chug.Chug(file, chugOut)
-	logMapper(chugOut)
-}
+	go chug.Chug(os.Stdin, chugOut)
 
-func getKey(entry chug.Entry) (string, error) {
-	if entry.Log.Data["request"] == nil {
-		return "", fmt.Errorf("not an http request")
-	}
-	return fmt.Sprintf("%s:%s", entry.Log.Data["request"], entry.Log.Session), nil
-}
+	metrics := make(chan Metric)
 
-func writeData(name string, tags []string, value float64, timestamp int64) {
+	go func() {
+		for metric := range metrics {
+			fmt.Printf("%s%s,%s value=%s %d\n", metricPrefix, metric.Name, strings.Join(metric.Tags, ","), metric.Value, metric.Timestamp.UnixNano())
+		}
+	}()
+
+	NewRequestLatencyMapper().Run(chugOut, metrics)
+
+	close(metrics)
 }
