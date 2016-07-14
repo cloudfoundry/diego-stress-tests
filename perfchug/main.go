@@ -32,9 +32,12 @@ func main() {
 		}
 	}()
 
-	mapAll(chugOut, metrics, RequestLatencyMapper, AuctionSchedulingMapper, TaskLifecycleMapper, LRPLifecycleMapper)
-
-	close(metrics)
+	mapAll(chugOut, metrics,
+		RequestLatencyMapper,
+		AuctionSchedulingMapper,
+		TaskLifecycleMapper,
+		LRPLifecycleMapper,
+	)
 }
 
 func mapToTags(m map[string]string) []string {
