@@ -21,11 +21,26 @@ func main() {
 
 	go func() {
 		for metric := range metrics {
-			fmt.Printf("%s%s,%s value=%s %d\n", metricPrefix, metric.Name, strings.Join(metric.Tags, ","), metric.Value, metric.Timestamp.UnixNano())
+			tags := mapToTags(metric.Tags)
+			fmt.Printf("%s%s,%s value=%s %d\n",
+				metricPrefix,
+				metric.Name,
+				strings.Join(tags, ","),
+				metric.Value,
+				metric.Timestamp.UnixNano(),
+			)
 		}
 	}()
 
-	NewRequestLatencyMapper().Run(chugOut, metrics)
+	mapAll(chugOut, metrics, RequestLatencyMapper, AuctionSchedulingMapper, TaskLifecycleMapper, LRPLifecycleMapper)
 
 	close(metrics)
+}
+
+func mapToTags(m map[string]string) []string {
+	tags := make([]string, 0, len(m))
+	for key, value := range m {
+		tags = append(tags, fmt.Sprintf("%s=%s", key, value))
+	}
+	return tags
 }
