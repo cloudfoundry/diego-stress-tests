@@ -8,7 +8,9 @@ import (
 	"code.cloudfoundry.org/lager/chug"
 )
 
-var RequestLatencyMapper = Mapper{
+var RequestLatencyMapper = &Mapper{
+	Name: "RequestLatencyMapper",
+
 	StartString: "request.serving",
 	EndString:   "request.done",
 
@@ -18,8 +20,8 @@ var RequestLatencyMapper = Mapper{
 		return Metric{
 			Name: "RequestLatency",
 			Tags: map[string]string{
-				"request":   fmt.Sprint(e.Log.Data["request"]),
 				"component": component,
+				"request":   fmt.Sprint(e.Log.Data["request"]),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: s.Log.Timestamp,
@@ -36,7 +38,9 @@ var RequestLatencyMapper = Mapper{
 	entriesMap: make(map[string]chug.Entry),
 }
 
-var AuctionSchedulingMapper = Mapper{
+var AuctionSchedulingMapper = &Mapper{
+	Name: "AuctionSchedulingMapper",
+
 	StartString: "auction.scheduling",
 	EndString:   "auction.scheduled",
 
@@ -60,7 +64,9 @@ var AuctionSchedulingMapper = Mapper{
 	entriesMap: make(map[string]chug.Entry),
 }
 
-var TaskLifecycleMapper = Mapper{
+var TaskLifecycleMapper = &Mapper{
+	Name: "TaskLifecycleMapper",
+
 	StartString: "desire-task.starting",
 	EndString:   "complete-task.complete",
 
@@ -68,10 +74,10 @@ var TaskLifecycleMapper = Mapper{
 		component := strings.Split(e.Log.Message, ".")[0]
 		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
 		return Metric{
-			Name: "TaskLifecycleMapper",
+			Name: "TaskLifecycle",
 			Tags: map[string]string{
-				"task_guid": fmt.Sprint(e.Log.Data["task_guid"]),
 				"component": component,
+				"task_guid": fmt.Sprint(e.Log.Data["task_guid"]),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: s.Log.Timestamp,
@@ -88,19 +94,22 @@ var TaskLifecycleMapper = Mapper{
 	entriesMap: make(map[string]chug.Entry),
 }
 
-var LRPLifecycleMapper = Mapper{
-	StartString: "desire-lrp.starting",
-	EndString:   "desire-lrp.complete",
+var LRPLifecycleMapper = &Mapper{
+	Name: "LRPLifecycleMapper",
+
+	StartString: "create-unclaimed-actual-lrp.starting",
+	EndString:   "start-actual-lrp.complete",
 
 	Transform: func(s, e chug.Entry) Metric {
 		component := strings.Split(e.Log.Message, ".")[0]
 		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		keyData := e.Log.Data["actual_lrp_key"].(map[string]interface{})
 		return Metric{
-			Name: "LRPLifecycleMapper",
+			Name: "LRPLifecycle",
 			Tags: map[string]string{
-				"process_guid": fmt.Sprint(e.Log.Data["process_guid"]),
-				"index":        fmt.Sprint(e.Log.Data["index"]),
 				"component":    component,
+				"process_guid": fmt.Sprint(keyData["process_guid"]),
+				"index":        fmt.Sprint(keyData["index"]),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: s.Log.Timestamp,
@@ -108,13 +117,19 @@ var LRPLifecycleMapper = Mapper{
 	},
 
 	GetKey: func(entry chug.Entry) (string, error) {
-		if entry.Log.Data["process_guid"] == nil {
+		if entry.Log.Data["actual_lrp_key"] == nil {
 			return "", fmt.Errorf("not an LRP log line")
 		}
-		if entry.Log.Data["index"] == nil {
+
+		keyData := entry.Log.Data["actual_lrp_key"].(map[string]interface{})
+
+		if keyData["process_guid"] == nil {
 			return "", fmt.Errorf("not an LRP log line")
 		}
-		return fmt.Sprintf("%s:%d", entry.Log.Data["process_guid"], entry.Log.Data["index"]), nil
+		if keyData["index"] == nil {
+			return "", fmt.Errorf("not an LRP log line")
+		}
+		return fmt.Sprintf("%s:%v", keyData["process_guid"], keyData["index"]), nil
 	},
 
 	entriesMap: make(map[string]chug.Entry),
