@@ -1,63 +1,66 @@
 package main
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/lager/chug"
 )
 
-type Mapper interface {
-	Run(in <-chan chug.Entry, metrics chan<- Metric)
-}
-
 type Metric struct {
 	Name      string
-	Tags      []string
+	Tags      map[string]string
 	Value     string
 	Timestamp time.Time
 }
 
-type requestLatencyMapper struct {
+type Mapper struct {
+	StartString string
+	EndString   string
+	Transform   func(s, e chug.Entry) Metric
+	GetKey      func(entry chug.Entry) (string, error)
+
+	entriesMap map[string]chug.Entry
+	s          sync.RWMutex
 }
 
-func NewRequestLatencyMapper() Mapper {
-	return requestLatencyMapper{}
-}
+func (m *Mapper) processEntry(entry chug.Entry, metrics chan<- Metric) {
+	// m.s.Lock()
+	// defer m.s.Unlock()
 
-func (m requestLatencyMapper) Run(in <-chan chug.Entry, metrics chan<- Metric) {
-	mapper := make(map[string]chug.Entry)
-
-	for entry := range in {
-		key, err := m.getKey(entry)
+	if strings.Contains(entry.Log.Message, m.StartString) {
+		key, err := m.GetKey(entry)
 		if err != nil {
-			continue
+			return
 		}
+		m.entriesMap[key] = entry
+		return
+	}
 
-		if strings.Contains(entry.Log.Message, "request.serving") {
-			mapper[key] = entry
+	if strings.Contains(entry.Log.Message, m.EndString) {
+		key, err := m.GetKey(entry)
+		if err != nil {
+			return
 		}
-
-		if strings.Contains(entry.Log.Message, "request.done") {
-			if servingEntry, ok := mapper[key]; ok {
-				timeDiff := entry.Log.Timestamp.Sub(servingEntry.Log.Timestamp)
-				metrics <- Metric{
-					Name:      "RequestLatency",
-					Tags:      []string{fmt.Sprintf("request=%s", entry.Log.Data["request"])},
-					Value:     strconv.FormatInt(int64(timeDiff), 10),
-					Timestamp: servingEntry.Log.Timestamp,
-				}
-				delete(mapper, key)
-			}
+		if startEntry, ok := m.entriesMap[key]; ok {
+			metrics <- m.Transform(startEntry, entry)
+			delete(m.entriesMap, key)
 		}
+		return
 	}
 }
 
-func (m requestLatencyMapper) getKey(entry chug.Entry) (string, error) {
-	if entry.Log.Data["request"] == nil {
-		return "", fmt.Errorf("not an http request")
+func mapAll(in <-chan chug.Entry, metrics chan<- Metric, mappers ...Mapper) {
+	// wg := sync.WaitGroup{}
+	for entry := range in {
+		for _, mapper := range mappers {
+			// wg.Add(1)
+			// go func() {
+			mapper.processEntry(entry, metrics)
+			// wg.Done()
+			// }()
+		}
+		// wg.Wait()
 	}
-	return fmt.Sprintf("%s:%s", entry.Log.Data["request"], entry.Log.Session), nil
 }
