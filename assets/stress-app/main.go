@@ -72,7 +72,6 @@ func main() {
 	}()
 
 	err = http.ListenAndServe("0.0.0.0:"+os.Getenv("PORT"), http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		log.Printf("serving request: %#v\n", r)
 		rw.Write(vcapApplicationBytes)
 	}))
 
