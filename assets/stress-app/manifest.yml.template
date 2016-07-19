@@ -1,0 +1,66 @@
+{{ $domain := .domain }}
+---
+applications:
+- name: {{ .lightGroupName }}
+  instances: 4
+  memory: 32M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ .lightGroupName }}.{{ $domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 1
+
+{{ range .lightNames }}
+- name: {{ . }}
+  instances: 1
+  memory: 32M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ . }}.{{ $domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 1
+{{ end }}
+
+- name: {{ .mediumGroupName }}
+  instances: 2
+  memory: 128M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ .mediumGroupName }}.{{ $domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 2
+
+{{ range .mediumNames }}
+- name: {{ . }}
+  instances: 1
+  memory: 128M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ . }}.{{ $domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 2
+{{ end }}
+
+{{ range .heavyNames }}
+- name: {{ . }}
+  instances: 1
+  memory: 1024M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ . }}.{{ $domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 3
+{{ end }}
+
+{{ range .crashingNames }}
+- name: {{ . }}
+  instances: 1
+  memory: 128M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ . }}.{{ $domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 0
+    MIN_SECONDS_TIL_CRASH: 30
+    MAX_SECONDS_TIL_CRASH: 360
+{{ end }}
