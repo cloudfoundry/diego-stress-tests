@@ -13,11 +13,11 @@ import (
 
 func main() {
 	endpointToHit := os.Getenv("ENDPOINT_TO_HIT")
-	logRate, err := strconv.Atoi(os.Getenv("LOGS_PER_SECOND"))
+	logRate, err := strconv.ParseFloat(os.Getenv("LOGS_PER_SECOND"), 64)
 	if err != nil {
 		log.Fatal(err)
 	}
-	requestRate, err := strconv.Atoi(os.Getenv("REQUEST_PER_SECOND"))
+	requestRate, err := strconv.ParseFloat(os.Getenv("REQUEST_PER_SECOND"), 64)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,14 +37,14 @@ func main() {
 	var crashTimer *time.Timer
 
 	if requestRate > 0 {
-		requestTicker = time.NewTicker(time.Second / time.Duration(requestRate))
+		requestTicker = time.NewTicker(time.Duration(float64(time.Second) / requestRate))
 	} else {
 		requestTicker = time.NewTicker(time.Hour)
 		requestTicker.Stop()
 	}
 
 	if logRate > 0 {
-		logTicker = time.NewTicker(time.Second / time.Duration(logRate))
+		logTicker = time.NewTicker(time.Duration(float64(time.Second) / logRate))
 	} else {
 		logTicker = time.NewTicker(time.Hour)
 		logTicker.Stop()
