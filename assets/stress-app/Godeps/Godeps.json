@@ -1,5 +1,6 @@
 {
-	"ImportPath": "go-online",
-	"GoVersion": "go1.6.2",
+	"ImportPath": "code.cloudfoundry.org/diego-stress-tests/assets/stress-app",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
 	"Deps": []
 }

@@ -3,6 +3,7 @@
 applications:
 - name: {{ .lightGroupName }}
   instances: 4
+  buildpack: go_buildpack
   memory: 32M
   disk_quota: 100M
   env:
@@ -13,6 +14,7 @@ applications:
 {{ range .lightNames }}
 - name: {{ . }}
   instances: 1
+  buildpack: go_buildpack
   memory: 32M
   disk_quota: 100M
   env:
@@ -23,6 +25,7 @@ applications:
 
 - name: {{ .mediumGroupName }}
   instances: 2
+  buildpack: go_buildpack
   memory: 128M
   disk_quota: 100M
   env:
@@ -33,6 +36,7 @@ applications:
 {{ range .mediumNames }}
 - name: {{ . }}
   instances: 1
+  buildpack: go_buildpack
   memory: 128M
   disk_quota: 100M
   env:
@@ -44,6 +48,7 @@ applications:
 {{ range .heavyNames }}
 - name: {{ . }}
   instances: 1
+  buildpack: go_buildpack
   memory: 1024M
   disk_quota: 100M
   env:
@@ -55,6 +60,7 @@ applications:
 {{ range .crashingNames }}
 - name: {{ . }}
   instances: 1
+  buildpack: go_buildpack
   memory: 128M
   disk_quota: 100M
   env:
