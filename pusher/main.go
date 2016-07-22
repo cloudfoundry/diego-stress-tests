@@ -146,7 +146,7 @@ func (r Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 						return
 					}
 					logger.Error("giving-up-pushing-app", nil)
-					os.Exit(2)
+					r.cancel()
 				}()
 			}
 			wg.Wait()
@@ -212,7 +212,11 @@ func cf(ctx context.Context, timeout time.Duration, args ...string) error {
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
-		logger.Error("cf-command-timed-out", err)
+		logger.Error("cf-command-error", err)
+		killErr := cmd.Process.Kill()
+		if killErr != nil {
+			logger.Error("kill-failed", killErr)
+		}
 		return err
 	case err := <-errChan:
 		if err != nil {
