@@ -8,11 +8,14 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/hashicorp/consul/api"
 	"github.com/satori/go.uuid"
 	"golang.org/x/net/context"
 )
 
 type Pusher struct {
+	ID string
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -21,15 +24,32 @@ type Pusher struct {
 
 func (p Pusher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := p.ctx.Value("logger").(lager.Logger)
+	go func() {
+		select {
+		case <-signals:
+			p.cancel()
+		case <-p.ctx.Done():
+		}
+	}()
+
 	p.directory = *cfLogsDirectory
+
+	client, err := api.NewClient(api.DefaultConfig())
+	if err != nil {
+		logger.Error("failed-building-consul-client", err)
+		return err
+	}
+
+	kv := client.KV()
+	key := "diego-perf/" + p.ID
 
 	ctx := p.setupOutputFiles(p.ctx, "cf.setup")
 	defer ctx.Value("stdout").(io.Closer).Close()
 	defer ctx.Value("stderr").(io.Closer).Close()
 
-	err := os.Chdir(*appPath)
+	err = os.Chdir(*appPath)
 	if err != nil {
-		logger.Error("failed-changing-into-app-dir", err, lager.Data{"app-path": *appPath})
+		logger.Error("failed-changing-into-app-dir", err, lager.Data{"app-path": appPath})
 		return err
 	}
 
@@ -39,31 +59,59 @@ func (p Pusher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		return err
 	}
 
-	close(ready)
-
-	go func() {
-		defer p.cancel()
-
-		for i := 0; i < *batches; i++ {
-			logger := logger.Session("batch", lager.Data{"batch": i + 1})
-			logger.Info("starting")
-			p.pushes(context.WithValue(ctx, "logger", logger), *batchSize)
-			logger.Info("complete")
-		}
-	}()
-
-	select {
-	case <-signals:
-		p.cancel()
-	case <-p.ctx.Done():
-		logger.Info("context-exited")
-		err := p.ctx.Err()
-		if err != nil && err != context.Canceled {
-			logger.Error("context-errored", err)
-			return err
-		}
+	pair, _, err := kv.Get(key, nil)
+	if err != nil {
+		logger.Error("failed-getting-key", err)
+		return err
 	}
 
+	shouldFillUp := false
+	if pair == nil {
+		logger.Info("fresh-state")
+		shouldFillUp = true
+	} else if string(pair.Value) == "done" {
+		logger.Info("already-filled-up")
+	} else {
+		shouldFillUp = true
+		logger.Info("already-started")
+
+		logger := logger.Session("cleaning-up")
+		logger.Info("starting")
+		// deleted things
+		err := p.cleanup(context.WithValue(p.ctx, "logger", logger))
+		if err != nil {
+			logger.Error("failed", err)
+			return err
+		}
+		logger.Info("complete")
+	}
+
+	_, err = kv.Put(&api.KVPair{Key: key, Value: []byte("started")}, nil)
+	if err != nil {
+		logger.Error("failed-setting-key", err)
+		return err
+	}
+
+	if shouldFillUp {
+		logger = logger.Session("filling-up")
+		logger.Info("starting")
+		err := p.fillUp(context.WithValue(p.ctx, "logger", logger), *appPath, *batchSize, *batches)
+		if err != nil {
+			logger.Error("failed", err)
+			return err
+		}
+		logger.Info("complete")
+	}
+
+	_, err = kv.Put(&api.KVPair{Key: key, Value: []byte("done")}, nil)
+	if err != nil {
+		logger.Error("failed-setting-key", err)
+		return err
+	}
+
+	close(ready)
+
+	p.cancel()
 	<-signals
 	return nil
 }
@@ -82,8 +130,9 @@ func (p Pusher) setupOutputFiles(ctx context.Context, prefix string) context.Con
 	return ctx
 }
 
-func (p Pusher) pushes(ctx context.Context, count int) {
+func (p Pusher) pushes(ctx context.Context, count int) error {
 	logger := ctx.Value("logger").(lager.Logger)
+	errChan := make(chan error, count)
 
 	wg := sync.WaitGroup{}
 	for i := 0; i < count; i++ {
@@ -120,28 +169,49 @@ func (p Pusher) pushes(ctx context.Context, count int) {
 				return
 			}
 			logger.Error("giving-up-pushing-app", nil)
+			errChan <- err
 			p.cancel()
 		}()
 	}
 	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		return err
+	default:
+		return nil
+	}
 }
 
-func setupCFCLI(ctx context.Context) error {
-	var err error
+func (p Pusher) fillUp(ctx context.Context, appPath string, batchSize int, batches int) error {
 	logger := ctx.Value("logger").(lager.Logger)
+	errChan := make(chan error, batches)
 
-	err = cf(ctx, CFDefaultTimeout, "api", *cfAPI, fmt.Sprintf("--skip-ssl-validation=%t", *skipSSLValidation))
-	if err != nil {
-		logger.Error("failed-setting-cf-api", nil, lager.Data{"api": *cfAPI})
+	for i := 0; i < batches; i++ {
+		logger := logger.Session("batch", lager.Data{"batch": i + 1})
+		logger.Info("starting")
+		err := p.pushes(context.WithValue(ctx, "logger", logger), batchSize)
+		errChan <- err
+		logger.Info("complete")
+	}
+
+	select {
+	case err := <-errChan:
 		return err
 	}
 
-	err = cf(ctx, CFDefaultTimeout, "auth", *adminUser, *adminPassword)
-	if err != nil {
-		return err
-	}
+	return nil
+}
 
-	err = cf(ctx, CFDefaultTimeout, "create-org", *orgName)
+func (p Pusher) cleanup(ctx context.Context) error {
+	ctx = p.setupOutputFiles(ctx, "cf.cleanup")
+	defer ctx.Value("stdout").(io.Closer).Close()
+	defer ctx.Value("stderr").(io.Closer).Close()
+
+	logger := ctx.Value("logger").(lager.Logger).Session("cleanup")
+	ctx = context.WithValue(ctx, "logger", logger)
+
+	err := cf(ctx, CFDefaultTimeout, "delete-space", "-f", *spaceName)
 	if err != nil {
 		return err
 	}
@@ -152,16 +222,6 @@ func setupCFCLI(ctx context.Context) error {
 	}
 
 	err = cf(ctx, CFDefaultTimeout, "target", "-o", *orgName, "-s", *spaceName)
-	if err != nil {
-		return err
-	}
-
-	err = cf(ctx, CFDefaultTimeout, "create-quota", "runaway", "-m", "99999G", "-s", "10000000", "-r", "10000000", "--allow-paid-service-plans")
-	if err != nil {
-		return err
-	}
-
-	err = cf(ctx, CFDefaultTimeout, "set-quota", *orgName, "runaway")
 	if err != nil {
 		return err
 	}

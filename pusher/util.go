@@ -55,6 +55,49 @@ func cf(ctx context.Context, timeout time.Duration, args ...string) error {
 	return nil
 }
 
+func setupCFCLI(ctx context.Context) error {
+	var err error
+	logger := ctx.Value("logger").(lager.Logger)
+
+	err = cf(ctx, CFDefaultTimeout, "api", *cfAPI, fmt.Sprintf("--skip-ssl-validation=%t", *skipSSLValidation))
+	if err != nil {
+		logger.Error("failed-setting-cf-api", nil, lager.Data{"api": *cfAPI})
+		return err
+	}
+
+	err = cf(ctx, CFDefaultTimeout, "auth", *adminUser, *adminPassword)
+	if err != nil {
+		return err
+	}
+
+	err = cf(ctx, CFDefaultTimeout, "create-org", *orgName)
+	if err != nil {
+		return err
+	}
+
+	err = cf(ctx, CFDefaultTimeout, "create-space", *spaceName, "-o", *orgName)
+	if err != nil {
+		return err
+	}
+
+	err = cf(ctx, CFDefaultTimeout, "target", "-o", *orgName, "-s", *spaceName)
+	if err != nil {
+		return err
+	}
+
+	err = cf(ctx, CFDefaultTimeout, "create-quota", "runaway", "-m", "99999G", "-s", "10000000", "-r", "10000000", "--allow-paid-service-plans")
+	if err != nil {
+		return err
+	}
+
+	err = cf(ctx, CFDefaultTimeout, "set-quota", *orgName, "runaway")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func push(ctx context.Context, args ...string) error {
 	return cf(ctx, CFPushTimeout, append([]string{"push"}, args...)...)
 }

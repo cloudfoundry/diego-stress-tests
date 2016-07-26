@@ -1,6 +1,7 @@
 {{ $domain := .domain }}
 ---
 applications:
+
 - name: {{ .lightGroupName }}
   instances: 4
   buildpack: go_buildpack
