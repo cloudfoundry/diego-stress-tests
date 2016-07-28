@@ -35,13 +35,16 @@ func (p Poller) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		key := "diego-perf/pusher-start"
 		logger.Debug("polling-for-key", lager.Data{"key": key})
 		pair, _, err := kv.Get(key, nil)
+
 		if err != nil {
 			logger.Error("failed-polling-for-key", err)
 			return err
 		}
 
 		if pair != nil {
-			logger.Info("found-key", lager.Data{"key": key, "value": pair})
+			logger.Info("found-key", lager.Data{"key": key, "value": string(pair.Value)})
+
+			p.ctx = context.WithValue(p.ctx, "orchestratorAddress", string(pair.Value))
 			close(ready)
 			break
 		}

@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"net/http"
 	"os"
 	"path"
 	"sync"
@@ -20,6 +24,11 @@ type Pusher struct {
 	cancel context.CancelFunc
 
 	directory string
+}
+
+type update struct {
+	pusherId string
+	batch    int
 }
 
 func (p Pusher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -160,12 +169,13 @@ func (p Pusher) pushes(ctx context.Context, count int) error {
 			}()
 
 			for tries := *pushRetries; tries > 0; tries-- {
+				logger.Info("attempting-push")
 				err := push(ctx, "-f", fmt.Sprintf("manifests/manifest-%s.yml", guid))
 				if err != nil {
 					logger.Error("failed-pushing-app", nil, lager.Data{"attempt": *pushRetries - tries + 1})
 					continue
 				}
-
+				logger.Info("successful-push")
 				return
 			}
 			logger.Error("giving-up-pushing-app", nil)
@@ -192,6 +202,19 @@ func (p Pusher) fillUp(ctx context.Context, appPath string, batchSize int, batch
 		logger.Info("starting")
 		err := p.pushes(context.WithValue(ctx, "logger", logger), batchSize)
 		errChan <- err
+		// Post update to orchestrator
+		url := ctx.Value("orchestratorAddress").(string)
+
+		payload := update{pusherId: *pusherID, batch: i + 1}
+		jsonBuffer := new(bytes.Buffer)
+		json.NewEncoder(jsonBuffer).Encode(payload)
+		logger.Info("posting-update")
+		_, err = http.Post(url, "application/json", jsonBuffer)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+
 		logger.Info("complete")
 	}
 
