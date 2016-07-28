@@ -10,8 +10,9 @@ import (
 )
 
 type Poller struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	orchestratorAddress *string
 }
 
 func (p Poller) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -44,7 +45,7 @@ func (p Poller) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		if pair != nil {
 			logger.Info("found-key", lager.Data{"key": key, "value": string(pair.Value)})
 
-			p.ctx = context.WithValue(p.ctx, "orchestratorAddress", string(pair.Value))
+			*p.orchestratorAddress = string(pair.Value)
 			close(ready)
 			break
 		}

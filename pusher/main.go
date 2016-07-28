@@ -50,8 +50,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(ctx, "logger", logger)
 
-	poller := Poller{ctx: ctx, cancel: cancel}
-	pusher := Pusher{ID: *pusherID, ctx: ctx, cancel: cancel}
+	var orchestratorAddress string
+	poller := Poller{ctx: ctx, cancel: cancel, orchestratorAddress: &orchestratorAddress}
+	pusher := Pusher{ID: *pusherID, ctx: ctx, cancel: cancel, orchestratorAddress: &orchestratorAddress}
 
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"poller", poller},

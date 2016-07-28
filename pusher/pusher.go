@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -23,7 +22,8 @@ type Pusher struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	directory string
+	directory           string
+	orchestratorAddress *string
 }
 
 type update struct {
@@ -203,15 +203,24 @@ func (p Pusher) fillUp(ctx context.Context, appPath string, batchSize int, batch
 		err := p.pushes(context.WithValue(ctx, "logger", logger), batchSize)
 		errChan <- err
 		// Post update to orchestrator
-		url := ctx.Value("orchestratorAddress").(string)
+		host := *p.orchestratorAddress
+		url := "http://" + host + "/v1/diego-perf/update"
 
 		payload := update{pusherId: *pusherID, batch: i + 1}
 		jsonBuffer := new(bytes.Buffer)
 		json.NewEncoder(jsonBuffer).Encode(payload)
 		logger.Info("posting-update")
-		_, err = http.Post(url, "application/json", jsonBuffer)
+		resp, err := http.Post(url, "application/json", jsonBuffer)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal("failed-to-post-update", err)
+			return err
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			err := fmt.Errorf("status code: %d", resp.StatusCode)
+			logger.Fatal("failed-post-update-with-non-200", err)
 			return err
 		}
 
