@@ -22,7 +22,7 @@ var client *api.Client
 var err error
 
 var (
-	expectedNumPushers = flag.Int("expected-num-pushers", -1, "maximum number of tries for a single push")
+	expectedNumPushers = flag.Int("expectedNumPushers", -1, "maximum number of tries for a single push")
 )
 
 func main() {
@@ -37,9 +37,11 @@ func main() {
 
 	var server ifrit.Runner
 	server = http_server.New(*listenAddress, handler)
+	stopPushersPoller := NewStopPushersPoller(logger)
 
-	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
+	group := grouper.NewParallel(os.Interrupt, grouper.Members{
 		{"server", server},
+		{"stopPushers", stopPushersPoller},
 	})
 
 	client, err = api.NewClient(api.DefaultConfig())

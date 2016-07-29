@@ -11,9 +11,9 @@ type PusherUpdatesHandler struct {
 	logger lager.Logger
 }
 
-type update struct {
-	pusherID string
-	batch    int
+type Update struct {
+	PusherID string
+	Batch    int
 }
 
 func NewPusherUpdatesHandler(logger lager.Logger) *PusherUpdatesHandler {
@@ -26,13 +26,13 @@ func (h *PusherUpdatesHandler) PostUpdate(w http.ResponseWriter, req *http.Reque
 	var err error
 
 	decoder := json.NewDecoder(req.Body)
-	var u update
+	u := new(Update)
 	err = decoder.Decode(&u)
 	if err != nil {
 		h.logger.Error("failed to decode request", err)
 		http.Error(w, err.Error(), 500)
 	} else {
-		h.logger.Info("finished-pushing", lager.Data{"pusher-id": u.pusherID, "batch": u.batch})
+		h.logger.Info("finished-pushing", lager.Data{"pusher-id": u.PusherID, "batch": u.Batch})
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("update logged"))
 	}

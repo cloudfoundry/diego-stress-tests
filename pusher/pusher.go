@@ -26,9 +26,9 @@ type Pusher struct {
 	orchestratorAddress *string
 }
 
-type update struct {
-	pusherId string
-	batch    int
+type Update struct {
+	PusherId string
+	Batch    int
 }
 
 func (p Pusher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -50,7 +50,7 @@ func (p Pusher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	kv := client.KV()
-	key := "diego-perf/" + p.ID
+	key := "diego-perf-pushers/" + p.ID
 
 	ctx := p.setupOutputFiles(p.ctx, "cf.setup")
 	defer ctx.Value("stdout").(io.Closer).Close()
@@ -206,9 +206,9 @@ func (p Pusher) fillUp(ctx context.Context, appPath string, batchSize int, batch
 		host := *p.orchestratorAddress
 		url := "http://" + host + "/v1/diego-perf/update"
 
-		payload := update{pusherId: *pusherID, batch: i + 1}
-		jsonBuffer := new(bytes.Buffer)
-		json.NewEncoder(jsonBuffer).Encode(payload)
+		payload := Update{PusherId: p.ID, Batch: i + 1}
+		jsonBuffer := &bytes.Buffer{}
+		json.NewEncoder(jsonBuffer).Encode(&payload)
 		logger.Info("posting-update")
 		resp, err := http.Post(url, "application/json", jsonBuffer)
 		if err != nil {
