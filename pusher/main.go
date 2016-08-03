@@ -19,10 +19,10 @@ const (
 )
 
 var (
-	pushRetries = flag.Int("push-retries", 3, "maximum number of tries for a single push")
-	batches     = flag.Int("batches", 10, "number of batches of pushes to run")
-	batchSize   = flag.Int("batch-size", 10, "size of each parallel batch of pushes")
-	appPath     = flag.String("app-path", "../assets/stress-app", "location of the stress app")
+	pushRetries      = flag.Int("push-retries", 3, "maximum number of tries for a single push")
+	batches          = flag.Int("batches", 10, "number of batches of pushes to run")
+	concurrentPushes = flag.Int("concurrent-pushes-per-cell", 2, "number of concurrent pushes")
+	appPath          = flag.String("app-path", "../assets/stress-app", "location of the stress app")
 
 	cfAPI             = flag.String("api", "api.bosh-lite.com", "location of the cloud controller api")
 	adminUser         = flag.String("admin-user", "admin", "uaa admin user")
@@ -50,10 +50,12 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(ctx, "logger", logger)
 
-	poller := Poller{ctx: ctx, cancel: cancel}
-	pusher := Pusher{ID: *pusherID, ctx: ctx, cancel: cancel}
+	started := make(chan string)
 
-	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
+	poller := Poller{ctx: ctx, cancel: cancel, started: started}
+	pusher := Pusher{ID: *pusherID, ctx: ctx, cancel: cancel, started: started}
+
+	group := grouper.NewParallel(os.Interrupt, grouper.Members{
 		{"poller", poller},
 		{"pusher", pusher},
 	})

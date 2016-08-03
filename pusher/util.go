@@ -67,31 +67,37 @@ func setupCFCLI(ctx context.Context) error {
 
 	err = cf(ctx, CFDefaultTimeout, "auth", *adminUser, *adminPassword)
 	if err != nil {
+		logger.Error("failed-cf-auth", err)
 		return err
 	}
 
 	err = cf(ctx, CFDefaultTimeout, "create-org", *orgName)
 	if err != nil {
+		logger.Error("failed-creating-org", err, lager.Data{"org": *orgName})
 		return err
 	}
 
 	err = cf(ctx, CFDefaultTimeout, "create-space", *spaceName, "-o", *orgName)
 	if err != nil {
+		logger.Error("failed-creating-space", err, lager.Data{"space": *spaceName})
 		return err
 	}
 
 	err = cf(ctx, CFDefaultTimeout, "target", "-o", *orgName, "-s", *spaceName)
 	if err != nil {
+		logger.Error("failed-targeting-space", err, lager.Data{"org": *orgName, "space": *spaceName})
 		return err
 	}
 
 	err = cf(ctx, CFDefaultTimeout, "create-quota", "runaway", "-m", "99999G", "-s", "10000000", "-r", "10000000", "--allow-paid-service-plans")
 	if err != nil {
+		logger.Error("failed-creating-quota", err)
 		return err
 	}
 
 	err = cf(ctx, CFDefaultTimeout, "set-quota", *orgName, "runaway")
 	if err != nil {
+		logger.Error("failed-setting-quota", err)
 		return err
 	}
 
@@ -103,12 +109,12 @@ func push(ctx context.Context, args ...string) error {
 }
 
 func generateManifest(domain, templatePath, guid string) error {
-	t, err := template.ParseFiles(templatePath)
+	templ, err := template.ParseFiles(templatePath)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(fmt.Sprintf("manifests/manifest-%s.yml", guid))
+	file, err := os.Create(fmt.Sprintf("manifests/manifest-%s.yml", guid))
 	if err != nil {
 		return err
 	}
@@ -133,7 +139,7 @@ func generateManifest(domain, templatePath, guid string) error {
 		crashingNames = append(crashingNames, fmt.Sprintf("crashing%d-%s", i, guid))
 	}
 
-	err = t.Execute(f, map[string]interface{}{
+	return templ.Execute(file, map[string]interface{}{
 		"domain":          domain,
 		"lightGroupName":  fmt.Sprintf("light-group-%s", guid),
 		"mediumGroupName": fmt.Sprintf("medium-group-%s", guid),
@@ -142,10 +148,6 @@ func generateManifest(domain, templatePath, guid string) error {
 		"heavyNames":      heavyNames,
 		"crashingNames":   crashingNames,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func openFile(logger lager.Logger, filename string) *os.File {

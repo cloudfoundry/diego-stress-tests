@@ -1,0 +1,12 @@
+---
+applications:
+- name: {{ .appName }}
+  instances: {{ .appInstances }}
+  buildpack: go_buildpack
+  memory: 1024M
+  disk_quota: 100M
+  env:
+    ENDPOINT_TO_HIT: http://{{ .appName }}.{{ .domain }}
+    LOGS_PER_SECOND: 0
+    REQUEST_PER_SECOND: 3
+

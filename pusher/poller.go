@@ -10,14 +10,35 @@ import (
 )
 
 type Poller struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx               context.Context
+	cancel            context.CancelFunc
+	started           chan<- string
+	lastModifiedIndex uint64
 }
 
 func (p Poller) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := p.ctx.Value("logger").(lager.Logger)
 	logger = logger.Session("poller")
 
+	close(ready)
+
+	ticker := time.NewTicker(time.Second)
+
+	for {
+		select {
+		case <-signals:
+			return nil
+		case <-ticker.C:
+			err := p.checkKey(logger)
+			if err != nil {
+				logger.Error("failed-checking-key", err)
+				return err
+			}
+		}
+	}
+}
+
+func (p *Poller) checkKey(logger lager.Logger) error {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		logger.Error("failed-building-consul-client", err)
@@ -25,30 +46,24 @@ func (p Poller) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	kv := client.KV()
-	ticker := time.NewTicker(time.Second)
 
-	logger.Info("starting")
+	logger.Debug("starting")
 
-	for {
-		<-ticker.C
+	key := "diego-perf/pusher-start"
+	logger.Debug("polling-for-key", lager.Data{"key": key})
 
-		key := "diego-perf/pusher-start"
-		logger.Debug("polling-for-key", lager.Data{"key": key})
-		pair, _, err := kv.Get(key, nil)
-		if err != nil {
-			logger.Error("failed-polling-for-key", err)
-			return err
-		}
-
-		if pair != nil {
-			logger.Info("found-key", lager.Data{"key": key, "value": pair})
-			close(ready)
-			break
-		}
+	pair, _, err := kv.Get(key, nil)
+	if err != nil {
+		logger.Error("failed-polling-for-key", err)
+		return err
 	}
 
-	logger.Info("complete")
+	if pair != nil && pair.ModifyIndex != p.lastModifiedIndex {
+		logger.Info("found-key", lager.Data{"key": key, "value": string(pair.Value), "ModifyIndex": pair.ModifyIndex, "LastModifiedIndex": p.lastModifiedIndex})
+		p.started <- string(pair.Value)
+		p.lastModifiedIndex = pair.ModifyIndex
+	}
 
-	<-signals
+	logger.Debug("complete")
 	return nil
 }
