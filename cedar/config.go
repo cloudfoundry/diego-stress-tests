@@ -8,6 +8,12 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
+type appDefinition struct {
+	ManifestPath  string `json:"manifestPath"`
+	AppNamePrefix string `json:"appNamePrefix"`
+	AppCount      int    `json:"appCount"`
+}
+
 type Config struct {
 	numBatches       int
 	maxInFlight      int
@@ -16,6 +22,7 @@ type Config struct {
 	domain           string
 	appPayload       string
 	configFile       string
+	outputFile       string
 
 	appTypes      []appDefinition
 	totalAppCount int

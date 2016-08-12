@@ -12,15 +12,10 @@ var (
 	domain           = flag.String("domain", "bosh-lite.com", "app domain")
 	maxPollingErrors = flag.Int("max-polling-errors", 1, "max number of curl failures")
 	configFile       = flag.String("config", "config.json", "path to cedar config file")
+	outputFile       = flag.String("output", "output.json", "path to cedar metric results file")
 	appPayload       = flag.String("payload", "assets/temp-app", "directory containing the stress-app payload to push")
 	tolerance        = flag.Float64("tolerance", 1.0, "fractional failure tolerance")
 )
-
-type appDefinition struct {
-	ManifestPath  string `json:"manifestPath"`
-	AppNamePrefix string `json:"appNamePrefix"`
-	AppCount      int    `json:"appCount"`
-}
 
 func main() {
 	cflager.AddFlags(flag.CommandLine)
@@ -39,6 +34,7 @@ func main() {
 		appPayload:       *appPayload,
 		domain:           *domain,
 		configFile:       *configFile,
+		outputFile:       *outputFile,
 	}
 
 	config.Init(logger)
@@ -46,4 +42,5 @@ func main() {
 	pusher := NewPusher(config)
 	pusher.PushApps(logger)
 	pusher.StartApps(logger)
+	pusher.GenerateReport(logger)
 }

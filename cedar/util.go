@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -46,30 +47,35 @@ func newCfApp(logger lager.Logger, appName string, domain string, maxFailedCurls
 	}
 }
 
-func cf(logger lager.Logger, args ...string) error {
+func cf(logger lager.Logger, args ...string) ([]byte, error) {
 	// TODO timeout through context?
 	// TODO setup output files for stdout, stderr, and trace logs
 	logger = logger.Session("cf", lager.Data{"args": args})
 	cmd := exec.Command("cf", args...)
-	err := cmd.Start()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logger.Error("failed-starting-cf-command", err)
 		os.Exit(1)
 	}
 
-	errChan := make(chan error)
-	go func() {
-		errChan <- cmd.Wait()
-	}()
-
-	select {
-	case err := <-errChan:
-		if err != nil {
-			logger.Error("failed-running-cf-command", err)
-			return err
-		}
+	err = cmd.Start()
+	if err != nil {
+		logger.Error("failed-starting-cf-command", err)
+		os.Exit(1)
 	}
-	return nil
+
+	output, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		logger.Error("failed-starting-cf-command", err)
+		os.Exit(1)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		logger.Error("failed-running-cf-command", err)
+		return nil, err
+	}
+	return output, nil
 }
 
 func (a *cfApp) Push(logger lager.Logger, assetDir string) error {
@@ -78,12 +84,12 @@ func (a *cfApp) Push(logger lager.Logger, assetDir string) error {
 	logger.Info("started")
 	defer logger.Info("completed")
 
-	err := cf(logger, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
+	_, err := cf(logger, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
 	if err != nil {
 		return err
 	}
 	endpointToHit := fmt.Sprintf(AppRoutePattern, a.appName, a.domain)
-	err = cf(logger, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
+	_, err = cf(logger, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
 	if err != nil {
 		logger.Error("failed-to-set-env", err)
 		return err
@@ -97,7 +103,7 @@ func (a *cfApp) Start(logger lager.Logger) error {
 	logger.Info("started")
 	defer logger.Info("completed")
 
-	err := cf(logger, "start", a.appName)
+	_, err := cf(logger, "start", a.appName)
 	if err != nil {
 		logger.Error("failed-to-start", err)
 		return err
@@ -110,6 +116,20 @@ func (a *cfApp) Start(logger lager.Logger) error {
 	}
 	logger.Debug("successful-response", lager.Data{"response": response})
 	return nil
+}
+
+func (a *cfApp) Guid(logger lager.Logger) (string, error) {
+	logger = logger.Session("guid", lager.Data{"app": a.appName})
+	logger.Info("started")
+	defer logger.Info("completed")
+
+	output, err := cf(logger, "app", "--guid", a.appName)
+
+	if err != nil {
+		logger.Error("failed-to-get-guid", err)
+		return "", err
+	}
+	return strings.Trim(string(output), "\n"), nil
 }
 
 func (a *cfApp) Curl(endpoint string) (string, error) {

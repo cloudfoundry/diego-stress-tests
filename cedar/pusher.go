@@ -1,25 +1,61 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
+	"time"
+
+	"golang.org/x/net/context"
 
 	"code.cloudfoundry.org/lager"
+)
+
+type Report struct {
+	Succeeded bool    `json:"succeeded"`
+	StartTime *string `json:"start_time"`
+	EndTime   *string `json:"end_time"`
+	Duration  *string `json:"duration"`
+}
+
+type MetricsReport struct {
+	AppName     *string `json:"app_name"`
+	AppGuid     *string `json:"app_guid"`
+	PushReport  *Report `json:"push"`
+	StartReport *Report `json:"start"`
+}
+
+type MetricsOutput struct {
+	Tolerance int             `json:"tolerance"`
+	Failed    int             `json:"failed"`
+	Apps      []MetricsReport `json:"apps"`
+}
+
+const (
+	Push  = "push"
+	Start = "start"
 )
 
 type Pusher struct {
 	errChan chan error
 	config  Config
+	ctx     context.Context
+	cancel  context.CancelFunc
 
-	apps []*cfApp
+	apps   []*cfApp
+	report map[string]*MetricsReport
 }
 
 func NewPusher(config Config) Pusher {
-	return Pusher{
+	p := Pusher{
 		errChan: make(chan error, config.maxFailures),
+		report:  make(map[string]*MetricsReport),
 		config:  config,
 	}
+	p.ctx, p.cancel = context.WithCancel(context.Background())
+	return p
 }
 
 func (p *Pusher) PushApps(logger lager.Logger) {
@@ -35,7 +71,8 @@ func (p *Pusher) PushApps(logger lager.Logger) {
 	for i := 0; i < p.config.numBatches; i++ {
 		for _, appDef := range p.config.appTypes {
 			for j := 0; j < appDef.AppCount; j++ {
-				seedApp := newCfApp(logger, fmt.Sprintf("%s-batch-%d-%d", appDef.AppNamePrefix, i, j), p.config.domain, p.config.maxPollingErrors, appDef.ManifestPath)
+				name := fmt.Sprintf("%s-batch-%d-%d", appDef.AppNamePrefix, i, j)
+				seedApp := newCfApp(logger, name, p.config.domain, p.config.maxPollingErrors, appDef.ManifestPath)
 
 				wg.Add(1)
 
@@ -46,21 +83,49 @@ func (p *Pusher) PushApps(logger lager.Logger) {
 						wg.Done()
 					}()
 
-					err := seedApp.Push(logger, p.config.appPayload)
+					var err error
+					var succeeded bool
+					var startTime, endTime time.Time
+					var guid string
+
+					select {
+					case <-p.ctx.Done():
+						return
+					default:
+						succeeded = true
+						startTime = time.Now()
+						err = seedApp.Push(logger, p.config.appPayload)
+						endTime = time.Now()
+					}
 
 					if err != nil {
 						logger.Error("failed-pushing-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+						succeeded = false
 						select {
 						case p.errChan <- err:
 						default:
 							logger.Error("failure-tolerance-reached", nil)
-							os.Exit(1)
+							p.cancel()
 						}
 					} else {
+						guid, err = seedApp.Guid(logger)
+						if err != nil {
+							logger.Error("failed-getting-app-guid", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+						}
+
 						seedMutex.Lock()
 						p.apps = append(p.apps, seedApp)
 						seedMutex.Unlock()
 					}
+
+					p.report[name] = &MetricsReport{
+						AppName:     &name,
+						AppGuid:     &guid,
+						PushReport:  &Report{},
+						StartReport: &Report{},
+					}
+					p.updateReport(Push, name, succeeded, startTime, endTime)
+
 				}()
 			}
 		}
@@ -90,18 +155,70 @@ func (p *Pusher) StartApps(logger lager.Logger) {
 				wg.Done()
 			}()
 
-			err := appToStart.Start(logger)
+			var err error
+			var succeeded bool
+			var startTime, endTime time.Time
+			select {
+			case <-p.ctx.Done():
+				return
+			default:
+				succeeded = true
+				startTime = time.Now()
+				err = appToStart.Start(logger)
+				endTime = time.Now()
+			}
 
 			if err != nil {
-				logger.Error("failed-pushing-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+				logger.Error("failed-starting-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+				succeeded = false
 				select {
 				case p.errChan <- err:
 				default:
 					logger.Error("failure-tolerance-reached", nil)
-					os.Exit(1)
+					p.cancel()
 				}
 			}
+			p.updateReport(Start, appToStart.appName, succeeded, startTime, endTime)
+
 		}()
 	}
 	wg.Wait()
+}
+
+func (p *Pusher) GenerateReport(logger lager.Logger) {
+	report := MetricsOutput{
+		Tolerance: p.config.maxFailures,
+		Failed:    len(p.errChan) + 1,
+	}
+	metricsFile, err := os.OpenFile(p.config.outputFile, os.O_RDWR|os.O_CREATE, 0644)
+	defer metricsFile.Close()
+
+	if err != nil {
+		logger.Error("error-opening-metrics-output-file", err)
+		os.Exit(1)
+	}
+
+	jsonParser := json.NewEncoder(metricsFile)
+	for _, value := range p.report {
+		report.Apps = append(report.Apps, *value)
+	}
+	jsonParser.Encode(report)
+}
+
+func (p *Pusher) updateReport(reportType, name string, succeeded bool, startTime, endTime time.Time) {
+	var report *Report
+	switch reportType {
+	case Push:
+		report = p.report[name].PushReport
+	case Start:
+		report = p.report[name].StartReport
+	}
+	start := strconv.FormatInt(startTime.UnixNano(), 10)
+	end := strconv.FormatInt(endTime.UnixNano(), 10)
+	duration := strconv.FormatInt(endTime.UnixNano()-startTime.UnixNano(), 10)
+
+	report.Succeeded = succeeded
+	report.StartTime = &start
+	report.EndTime = &end
+	report.Duration = &duration
 }
