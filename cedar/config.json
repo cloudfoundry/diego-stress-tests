@@ -1,0 +1,12 @@
+[
+  {
+    "manifestPath": "assets/manifests/manifest-light.yml",
+    "appCount": 3,
+    "appNamePrefix": "light"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-medium.yml",
+    "appCount": 3,
+    "appNamePrefix": "light-group"
+  }
+]

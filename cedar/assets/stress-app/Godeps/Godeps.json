@@ -1,0 +1,6 @@
+{
+	"ImportPath": "code.cloudfoundry.org/diego-perf-release/src/cedar/assets/stress-app",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
+	"Deps": []
+}
