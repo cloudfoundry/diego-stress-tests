@@ -1,12 +1,32 @@
 [
   {
     "manifestPath": "assets/manifests/manifest-light.yml",
-    "appCount": 3,
+    "appCount": 9,
     "appNamePrefix": "light"
   },
   {
-    "manifestPath": "assets/manifests/manifest-medium.yml",
-    "appCount": 3,
+    "manifestPath": "assets/manifests/manifest-light-group.yml",
+    "appCount": 1,
     "appNamePrefix": "light-group"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-medium.yml",
+    "appCount": 7,
+    "appNamePrefix": "medium"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-medium-group.yml",
+    "appCount": 1,
+    "appNamePrefix": "medium-group"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-heavy.yml",
+    "appCount": 1,
+    "appNamePrefix": "heavy"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-crashing.yml",
+    "appCount": 2,
+    "appNamePrefix": "crashing"
   }
 ]
