@@ -51,6 +51,6 @@ func (c *Config) setAppAndFailureCounts(logger lager.Logger) {
 		totalAppCount += appDef.AppCount
 	}
 	c.totalAppCount = c.numBatches * totalAppCount
-	c.maxFailures = int(math.Ceil(*tolerance * float64(totalAppCount)))
+	c.maxFailures = int(math.Floor(*tolerance * float64(c.totalAppCount)))
 	logger.Info("config-counts", lager.Data{"app-count": c.totalAppCount, "max-failure": c.maxFailures})
 }
