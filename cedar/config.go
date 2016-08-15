@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/lager"
 )
@@ -23,6 +24,7 @@ type Config struct {
 	appPayload       string
 	configFile       string
 	outputFile       string
+	timeout          int
 
 	appTypes      []appDefinition
 	totalAppCount int
@@ -33,6 +35,10 @@ func (c *Config) Init(logger lager.Logger) {
 	logger = logger.Session("config")
 	c.setAppDefinitionTypes(logger)
 	c.setAppAndFailureCounts(logger)
+}
+
+func (c *Config) Timeout() time.Duration {
+	return time.Duration(c.timeout) * time.Second
 }
 
 func (c *Config) setAppDefinitionTypes(logger lager.Logger) {

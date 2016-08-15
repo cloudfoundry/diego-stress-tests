@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -41,8 +42,6 @@ const (
 type Pusher struct {
 	errChan chan error
 	config  Config
-	ctx     context.Context
-	cancel  context.CancelFunc
 
 	apps   []*cfApp
 	report map[string]*MetricsReport
@@ -54,11 +53,14 @@ func NewPusher(config Config) Pusher {
 		report:  make(map[string]*MetricsReport),
 		config:  config,
 	}
-	p.ctx, p.cancel = context.WithCancel(context.Background())
 	return p
 }
 
-func (p *Pusher) PushApps(logger lager.Logger) {
+func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
+	logger, ok := ctx.Value("logger").(lager.Logger)
+	if !ok {
+		logger, _ = cflager.New("cedar")
+	}
 	logger = logger.Session("pushing-apps", lager.Data{"max-allowed-failures": p.config.maxFailures})
 	logger.Info("started")
 	defer logger.Info("complete")
@@ -89,12 +91,12 @@ func (p *Pusher) PushApps(logger lager.Logger) {
 					var guid string
 
 					select {
-					case <-p.ctx.Done():
+					case <-ctx.Done():
 						return
 					default:
 						succeeded = true
 						startTime = time.Now()
-						err = seedApp.Push(logger, p.config.appPayload)
+						err = seedApp.Push(ctx, p.config.appPayload, p.config.Timeout())
 						endTime = time.Now()
 					}
 
@@ -105,10 +107,10 @@ func (p *Pusher) PushApps(logger lager.Logger) {
 						case p.errChan <- err:
 						default:
 							logger.Error("failure-tolerance-reached", nil)
-							p.cancel()
+							cancel()
 						}
 					} else {
-						guid, err = seedApp.Guid(logger)
+						guid, err = seedApp.Guid(ctx, p.config.Timeout())
 						if err != nil {
 							logger.Error("failed-getting-app-guid", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
 						}
@@ -135,7 +137,11 @@ func (p *Pusher) PushApps(logger lager.Logger) {
 	logger.Info("done-pushing-apps", lager.Data{"seed-apps": len(p.apps)})
 }
 
-func (p *Pusher) StartApps(logger lager.Logger) {
+func (p *Pusher) StartApps(ctx context.Context, cancel context.CancelFunc) {
+	logger, ok := ctx.Value("logger").(lager.Logger)
+	if !ok {
+		logger, _ = cflager.New("cedar")
+	}
 	logger = logger.Session("starting-apps", lager.Data{"max-allowed-failures": p.config.maxFailures})
 	logger.Info("started")
 	defer logger.Info("completed")
@@ -159,12 +165,12 @@ func (p *Pusher) StartApps(logger lager.Logger) {
 			var succeeded bool
 			var startTime, endTime time.Time
 			select {
-			case <-p.ctx.Done():
+			case <-ctx.Done():
 				return
 			default:
 				succeeded = true
 				startTime = time.Now()
-				err = appToStart.Start(logger)
+				err = appToStart.Start(ctx, p.config.Timeout())
 				endTime = time.Now()
 			}
 
@@ -175,7 +181,7 @@ func (p *Pusher) StartApps(logger lager.Logger) {
 				case p.errChan <- err:
 				default:
 					logger.Error("failure-tolerance-reached", nil)
-					p.cancel()
+					cancel()
 				}
 			}
 			p.updateReport(Start, appToStart.appName, succeeded, startTime, endTime)
@@ -185,7 +191,11 @@ func (p *Pusher) StartApps(logger lager.Logger) {
 	wg.Wait()
 }
 
-func (p *Pusher) GenerateReport(logger lager.Logger) {
+func (p *Pusher) GenerateReport(ctx context.Context, cancel context.CancelFunc) {
+	logger, ok := ctx.Value("logger").(lager.Logger)
+	if !ok {
+		logger, _ = cflager.New("cedar")
+	}
 	report := MetricsOutput{
 		Tolerance: p.config.maxFailures,
 		Failed:    len(p.errChan) + 1,

@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 
+	"golang.org/x/net/context"
+
 	"code.cloudfoundry.org/cflager"
 )
 
@@ -15,6 +17,7 @@ var (
 	outputFile       = flag.String("output", "output.json", "path to cedar metric results file")
 	appPayload       = flag.String("payload", "assets/temp-app", "directory containing the stress-app payload to push")
 	tolerance        = flag.Float64("tolerance", 1.0, "fractional failure tolerance")
+	timeout          = flag.Int("timeout", 30, "timeout in seconds")
 )
 
 func main() {
@@ -35,12 +38,16 @@ func main() {
 		domain:           *domain,
 		configFile:       *configFile,
 		outputFile:       *outputFile,
+		timeout:          *timeout,
 	}
 
 	config.Init(logger)
 
+	ctx := context.WithValue(context.Background(), "logger", logger)
+	ctx, cancel := context.WithCancel(context.Background())
+
 	pusher := NewPusher(config)
-	pusher.PushApps(logger)
-	pusher.StartApps(logger)
-	pusher.GenerateReport(logger)
+	pusher.PushApps(ctx, cancel)
+	pusher.StartApps(ctx, cancel)
+	pusher.GenerateReport(ctx, cancel)
 }
