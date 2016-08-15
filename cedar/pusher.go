@@ -93,7 +93,7 @@ func (p *Pusher) StartApps(logger lager.Logger) {
 			err := appToStart.Start(logger)
 
 			if err != nil {
-				logger.Error("failed-pushing-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+				logger.Error("failed-starting-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
 				select {
 				case p.errChan <- err:
 				default:
