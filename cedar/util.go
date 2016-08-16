@@ -1,11 +1,10 @@
-package main
+package cedar
 
 import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,6 +19,13 @@ const (
 	AppRoutePattern = "http://%s.%s"
 )
 
+type CfApp interface {
+	AppName() string
+	Push(context context.Context, payload string, timeout time.Duration) error
+	Start(context context.Context, timeout time.Duration) error
+	Guid(context context.Context, timeout time.Duration) (string, error)
+}
+
 type cfApp struct {
 	appName        string
 	appRoute       url.URL
@@ -30,16 +36,11 @@ type cfApp struct {
 	manifestPath   string
 }
 
-func newCfApp(logger lager.Logger, appName string, domain string, maxFailedCurls int, manifestPath string) *cfApp {
-	logger = logger.Session("creating-new-cf-app", lager.Data{"app": appName})
-	logger.Debug("started")
-	defer logger.Debug("completed")
-
+func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath string) (CfApp, error) {
 	rawUrl := fmt.Sprintf(AppRoutePattern, appName, domain)
 	appUrl, err := url.Parse(rawUrl)
 	if err != nil {
-		logger.Error("failed-parsing-url", err, lager.Data{"rawUrl": rawUrl})
-		os.Exit(1)
+		return nil, err
 	}
 	return &cfApp{
 		appName:        appName,
@@ -47,56 +48,11 @@ func newCfApp(logger lager.Logger, appName string, domain string, maxFailedCurls
 		domain:         domain,
 		maxFailedCurls: maxFailedCurls,
 		manifestPath:   manifestPath,
-	}
+	}, nil
 }
 
-func cf(ctx context.Context, args ...string) ([]byte, error) {
-	// TODO setup output files for stdout, stderr, and trace logs
-	logger, ok := ctx.Value("logger").(lager.Logger)
-	if !ok {
-		logger, _ = cflager.New("cedar")
-	}
-	logger = logger.Session("cf", lager.Data{"args": args})
-	cmd := exec.Command("cf", args...)
-	c := make(chan error, 1)
-	var output []byte = nil
-
-	go func() {
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			logger.Error("failed-starting-cf-command", err)
-			c <- err
-		}
-		err = cmd.Start()
-		if err != nil {
-			logger.Error("failed-starting-cf-command", err)
-			c <- err
-		}
-
-		output, err = ioutil.ReadAll(stdout)
-		if err != nil {
-			logger.Error("failed-starting-cf-command", err)
-			c <- err
-		}
-
-		err = cmd.Wait()
-		if err != nil {
-			logger.Error("failed-running-cf-command", err)
-			c <- err
-		}
-		c <- nil
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case err := <-c:
-		if err != nil {
-			return nil, err
-		} else {
-			return output, nil
-		}
-	}
+func (a *cfApp) AppName() string {
+	return a.appName
 }
 
 func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration) error {
@@ -201,7 +157,7 @@ func (a *cfApp) Curl(endpoint string) (string, error) {
 	}
 }
 
-func (a *cfApp) shouldRetryRequest(statusCode int) bool {
+func (a cfApp) shouldRetryRequest(statusCode int) bool {
 	if statusCode == 503 || statusCode == 404 {
 		return a.failedCurls < a.maxFailedCurls
 	}
@@ -225,4 +181,54 @@ func curl(url string) (statusCode int, body string, err error) {
 
 func newCurlErr(url string, statusCode int, body string) error {
 	return fmt.Errorf("Endpoint: %s, Status Code: %d, Body: %s", url, statusCode, body)
+}
+
+func cf(ctx context.Context, args ...string) ([]byte, error) {
+	// Use logger from context object, or create logger if none provided
+	logger, ok := ctx.Value("logger").(lager.Logger)
+	if !ok {
+		logger, _ = cflager.New("cedar")
+	}
+	logger = logger.Session("cf", lager.Data{"args": args})
+
+	cmd := exec.Command("cf", args...)
+	c := make(chan error, 1)
+	var output []byte = nil
+
+	go func() {
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			logger.Error("failed-starting-cf-command", err)
+			c <- err
+		}
+		err = cmd.Start()
+		if err != nil {
+			logger.Error("failed-starting-cf-command", err)
+			c <- err
+		}
+
+		output, err = ioutil.ReadAll(stdout)
+		if err != nil {
+			logger.Error("failed-starting-cf-command", err)
+			c <- err
+		}
+
+		err = cmd.Wait()
+		if err != nil {
+			logger.Error("failed-running-cf-command", err)
+			c <- err
+		}
+		c <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case err := <-c:
+		if err != nil {
+			return nil, err
+		} else {
+			return output, nil
+		}
+	}
 }

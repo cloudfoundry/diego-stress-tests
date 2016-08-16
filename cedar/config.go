@@ -1,4 +1,4 @@
-package main
+package cedar
 
 import (
 	"encoding/json"
@@ -9,40 +9,53 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-type appDefinition struct {
+type AppDefinition struct {
 	ManifestPath  string `json:"manifestPath"`
 	AppNamePrefix string `json:"appNamePrefix"`
 	AppCount      int    `json:"appCount"`
 }
 
 type Config struct {
-	numBatches       int
-	maxInFlight      int
-	maxPollingErrors int
-	tolerance        float64
-	domain           string
-	appPayload       string
-	configFile       string
-	outputFile       string
-	timeout          int
+	NumBatches       int
+	MaxInFlight      int
+	MaxPollingErrors int
+	Tolerance        float64
+	Domain           string
+	AppPayload       string
+	ConfigFile       string
+	OutputFile       string
+	Timeout          int
 
-	appTypes      []appDefinition
+	appTypes      []AppDefinition
 	totalAppCount int
 	maxFailures   int
 }
 
 func (c *Config) Init(logger lager.Logger) {
 	logger = logger.Session("config")
+
 	c.setAppDefinitionTypes(logger)
 	c.setAppAndFailureCounts(logger)
 }
 
-func (c *Config) Timeout() time.Duration {
-	return time.Duration(c.timeout) * time.Second
+func (c *Config) AppTypes() []AppDefinition {
+	return c.appTypes
+}
+
+func (c *Config) MaxFailures() int {
+	return c.maxFailures
+}
+
+func (c *Config) TotalAppCount() int {
+	return c.totalAppCount
+}
+
+func (c *Config) TimeoutDuration() time.Duration {
+	return time.Duration(c.Timeout) * time.Second
 }
 
 func (c *Config) setAppDefinitionTypes(logger lager.Logger) {
-	conf, err := os.Open(c.configFile)
+	conf, err := os.Open(c.ConfigFile)
 	defer conf.Close()
 
 	if err != nil {
@@ -63,7 +76,7 @@ func (c *Config) setAppAndFailureCounts(logger lager.Logger) {
 	for _, appDef := range c.appTypes {
 		totalAppCount += appDef.AppCount
 	}
-	c.totalAppCount = c.numBatches * totalAppCount
-	c.maxFailures = int(math.Floor(*tolerance * float64(c.totalAppCount)))
+	c.totalAppCount = c.NumBatches * totalAppCount
+	c.maxFailures = int(math.Floor(c.Tolerance * float64(c.totalAppCount)))
 	logger.Info("config-counts", lager.Data{"app-count": c.totalAppCount, "max-failure": c.maxFailures})
 }
