@@ -52,6 +52,7 @@ func NewPusher(config Config, apps []CfApp) Pusher {
 }
 
 func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
+	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
