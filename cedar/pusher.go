@@ -1,4 +1,4 @@
-package cedar
+package main
 
 import (
 	"encoding/json"
@@ -13,24 +13,18 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-type Report struct {
+type State struct {
 	Succeeded bool    `json:"succeeded"`
 	StartTime *string `json:"start_time"`
 	EndTime   *string `json:"end_time"`
 	Duration  *string `json:"duration"`
 }
 
-type MetricsReport struct {
-	AppName     *string `json:"app_name"`
-	AppGuid     *string `json:"app_guid"`
-	PushReport  *Report `json:"push"`
-	StartReport *Report `json:"start"`
-}
-
-type MetricsOutput struct {
-	Tolerance int             `json:"tolerance"`
-	Failed    int             `json:"failed"`
-	Apps      []MetricsReport `json:"apps"`
+type AppStateMetrics struct {
+	AppName    *string `json:"app_name"`
+	AppGuid    *string `json:"app_guid"`
+	PushState  *State  `json:"push"`
+	StartState *State  `json:"start"`
 }
 
 const (
@@ -42,17 +36,17 @@ type Pusher struct {
 	errChan chan error
 	config  Config
 
-	appsToPush  []CfApp
+	AppsToPush  []CfApp
 	AppsToStart []CfApp
-	Report      map[string]*MetricsReport
+	AppStates   map[string]*AppStateMetrics
 }
 
 func NewPusher(config Config, apps []CfApp) Pusher {
 	p := Pusher{
-		errChan:    make(chan error, config.maxFailures),
-		Report:     make(map[string]*MetricsReport),
+		errChan:    make(chan error, config.maxAllowedFailures),
+		AppStates:  make(map[string]*AppStateMetrics),
 		config:     config,
-		appsToPush: apps,
+		AppsToPush: apps,
 	}
 	return p
 }
@@ -61,7 +55,7 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
-	logger = logger.Session("pushing-apps", lager.Data{"max-allowed-failures": p.config.maxFailures})
+	logger = logger.Session("pushing-apps", lager.Data{"max-allowed-failures": p.config.maxAllowedFailures})
 	logger.Info("started")
 	defer logger.Info("complete")
 
@@ -70,8 +64,8 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 	wg := sync.WaitGroup{}
 	rateLimiter := make(chan struct{}, p.config.MaxInFlight)
 
-	for i := 0; i < len(p.appsToPush); i++ {
-		seedApp := p.appsToPush[i]
+	for i := 0; i < len(p.AppsToPush); i++ {
+		seedApp := p.AppsToPush[i]
 		wg.Add(1)
 		go func() {
 			rateLimiter <- struct{}{}
@@ -83,10 +77,11 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 			var err error
 			var succeeded bool
 			var startTime, endTime time.Time
-			var guid string
+			var guid *string
 
 			select {
 			case <-ctx.Done():
+				logger.Info("push-cancelled-before-pushing-app", lager.Data{"AppName": seedApp.AppName()})
 				return
 			default:
 				succeeded = true
@@ -96,7 +91,7 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 			}
 
 			if err != nil {
-				logger.Error("failed-pushing-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+				logger.Error("failed-pushing-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1, "AppName": seedApp.AppName()})
 				succeeded = false
 				select {
 				case p.errChan <- err:
@@ -105,22 +100,26 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 					cancel()
 				}
 			} else {
-				guid, err = seedApp.Guid(ctx, p.config.TimeoutDuration())
+				appGuid, err := seedApp.Guid(ctx, p.config.TimeoutDuration())
 				if err != nil {
 					logger.Error("failed-getting-app-guid", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
+					guid = nil
+				} else {
+					guid = &appGuid
 				}
 
 				seedMutex.Lock()
+				logger.Info("pushed-app-and-retrieved-guid", lager.Data{"AppName": seedApp.AppName()})
 				p.AppsToStart = append(p.AppsToStart, seedApp)
 				seedMutex.Unlock()
 			}
 
 			name := seedApp.AppName()
-			p.Report[name] = &MetricsReport{
-				AppName:     &name,
-				AppGuid:     &guid,
-				PushReport:  &Report{},
-				StartReport: &Report{},
+			p.AppStates[name] = &AppStateMetrics{
+				AppName:    &name,
+				AppGuid:    guid,
+				PushState:  &State{},
+				StartState: &State{},
 			}
 			p.updateReport(Push, name, succeeded, startTime, endTime)
 
@@ -136,7 +135,7 @@ func (p *Pusher) StartApps(ctx context.Context, cancel context.CancelFunc) {
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
-	logger = logger.Session("starting-apps", lager.Data{"max-allowed-failures": p.config.maxFailures})
+	logger = logger.Session("starting-apps", lager.Data{"max-allowed-failures": p.config.maxAllowedFailures})
 	logger.Info("started")
 	defer logger.Info("completed")
 
@@ -160,12 +159,14 @@ func (p *Pusher) StartApps(ctx context.Context, cancel context.CancelFunc) {
 			var startTime, endTime time.Time
 			select {
 			case <-ctx.Done():
+				logger.Info("start-cancelled-before-starting-app", lager.Data{"AppName": appToStart.AppName()})
 				return
 			default:
 				succeeded = true
 				startTime = time.Now()
 				err = appToStart.Start(ctx, p.config.TimeoutDuration())
 				endTime = time.Now()
+				logger.Info("started-app", lager.Data{"AppName": appToStart.AppName()})
 			}
 
 			if err != nil {
@@ -190,10 +191,22 @@ func (p *Pusher) GenerateReport(ctx context.Context, cancel context.CancelFunc) 
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
-	report := MetricsOutput{
-		Tolerance: p.config.maxFailures,
-		Failed:    len(p.errChan) + 1,
+
+	succeeded := true
+	select {
+	case <-ctx.Done():
+		succeeded = false
+	default:
 	}
+
+	report := struct {
+		Succeeded bool              `json:"succeeded"`
+		Apps      []AppStateMetrics `json:"apps"`
+	}{
+		succeeded,
+		[]AppStateMetrics{},
+	}
+
 	metricsFile, err := os.OpenFile(p.config.OutputFile, os.O_RDWR|os.O_CREATE, 0644)
 	defer metricsFile.Close()
 
@@ -203,19 +216,19 @@ func (p *Pusher) GenerateReport(ctx context.Context, cancel context.CancelFunc) 
 	}
 
 	jsonParser := json.NewEncoder(metricsFile)
-	for _, value := range p.Report {
+	for _, value := range p.AppStates {
 		report.Apps = append(report.Apps, *value)
 	}
 	jsonParser.Encode(report)
 }
 
 func (p *Pusher) updateReport(reportType, name string, succeeded bool, startTime, endTime time.Time) {
-	var report *Report
+	var report *State
 	switch reportType {
 	case Push:
-		report = p.Report[name].PushReport
+		report = p.AppStates[name].PushState
 	case Start:
-		report = p.Report[name].StartReport
+		report = p.AppStates[name].StartState
 	}
 	start := strconv.FormatInt(startTime.UnixNano(), 10)
 	end := strconv.FormatInt(endTime.UnixNano(), 10)

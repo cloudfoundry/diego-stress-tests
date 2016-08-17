@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"code.cloudfoundry.org/diego-stress-tests/cedar"
 	"golang.org/x/net/context"
 )
 
@@ -171,5 +170,3 @@ func (fake *FakeCfApp) GuidReturns(result1 string, result2 error) {
 		result2 error
 	}{result1, result2}
 }
-
-var _ cedar.CfApp = new(FakeCfApp)

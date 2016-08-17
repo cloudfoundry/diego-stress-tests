@@ -1,4 +1,4 @@
-package cedar
+package main
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func (a appGenerator) Apps(ctx context.Context) []CfApp {
 	logger.Info("started")
 	defer logger.Info("complete")
 
-	apps := make([]CfApp, a.config.totalAppCount)
+	apps := []CfApp{}
 	for i := 0; i < a.config.NumBatches; i++ {
 		for _, appDef := range a.config.appTypes {
 			for j := 0; j < appDef.AppCount; j++ {

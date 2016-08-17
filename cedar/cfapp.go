@@ -1,4 +1,4 @@
-package cedar
+package main
 
 import (
 	"fmt"
@@ -103,7 +103,7 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 		logger.Error("failed-curling-app", err)
 		return err
 	}
-	logger.Debug("successful-response", lager.Data{"response": response})
+	logger.Debug("successful-response-starting", lager.Data{"response": response})
 	return nil
 }
 

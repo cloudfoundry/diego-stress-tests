@@ -1,4 +1,4 @@
-package cedar
+package main
 
 import (
 	"flag"

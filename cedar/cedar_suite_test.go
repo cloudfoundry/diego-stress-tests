@@ -1,4 +1,4 @@
-package cedar_test
+package main_test
 
 import (
 	"io/ioutil"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,18 +17,18 @@ import (
 var configContent string = `
 [
   {
-    "manifestPath": "assets/manifests/manifest-light.yml",
+    "manifestPath": "manifest-light.yml",
     "appCount": 9,
     "appNamePrefix": "light"
   },
   {
-    "manifestPath": "assets/manifests/manifest-medium-group.yml",
+    "manifestPath": "manifest-medium-group.yml",
     "appCount": 3,
     "appNamePrefix": "medium-group"
   }
 ]`
 
-var tempDir, generatedFile string
+var tempDir, fakeConfigFile string
 var fakeLogger lager.Logger
 
 func TestCedar(t *testing.T) {
@@ -35,12 +36,11 @@ func TestCedar(t *testing.T) {
 		tempDir, err := ioutil.TempDir("", "tmp")
 		Expect(err).NotTo(HaveOccurred())
 
-		generatedFile = filepath.Join(tempDir, "sample-config.json")
-
-		err = ioutil.WriteFile(generatedFile, []byte(configContent), 0644)
+		fakeConfigFile = filepath.Join(tempDir, "sample-config.json")
+		err = ioutil.WriteFile(fakeConfigFile, []byte(configContent), 0644)
 		Expect(err).NotTo(HaveOccurred())
 
-		fakeLogger = lager.NewLogger("fakelogger")
+		fakeLogger = lagertest.NewTestLogger("fakelogger")
 	})
 
 	AfterEach(func() {

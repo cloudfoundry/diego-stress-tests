@@ -1,4 +1,4 @@
-package cedar_test
+package main_test
 
 import (
 	"time"
@@ -21,7 +21,7 @@ var _ = Describe("Cedar", func() {
 			Tolerance:        0.5,
 			Domain:           "bosh-lite.com",
 			AppPayload:       "assets/temp-app",
-			ConfigFile:       generatedFile,
+			ConfigFile:       fakeConfigFile,
 			OutputFile:       "tmp/output.json",
 			Timeout:          30,
 		}
@@ -42,19 +42,19 @@ var _ = Describe("Cedar", func() {
 		})
 
 		It("sets the max failures", func() {
-			Expect(config.MaxFailures()).To(Equal(6))
+			Expect(config.MaxAllowedFailures()).To(Equal(6))
 		})
 
 		It("sets the app types", func() {
 			Expect(len(config.AppTypes())).To(Equal(2))
 			Expect(config.AppTypes()).To(Equal([]AppDefinition{
 				AppDefinition{
-					ManifestPath:  "assets/manifests/manifest-light.yml",
+					ManifestPath:  "manifest-light.yml",
 					AppCount:      9,
 					AppNamePrefix: "light",
 				},
 				AppDefinition{
-					ManifestPath:  "assets/manifests/manifest-medium-group.yml",
+					ManifestPath:  "manifest-medium-group.yml",
 					AppCount:      3,
 					AppNamePrefix: "medium-group",
 				},

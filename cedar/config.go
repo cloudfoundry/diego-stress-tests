@@ -1,4 +1,4 @@
-package cedar
+package main
 
 import (
 	"encoding/json"
@@ -26,9 +26,9 @@ type Config struct {
 	OutputFile       string
 	Timeout          int
 
-	appTypes      []AppDefinition
-	totalAppCount int
-	maxFailures   int
+	appTypes           []AppDefinition
+	totalAppCount      int
+	maxAllowedFailures int
 }
 
 func (c *Config) Init(logger lager.Logger) {
@@ -42,8 +42,8 @@ func (c *Config) AppTypes() []AppDefinition {
 	return c.appTypes
 }
 
-func (c *Config) MaxFailures() int {
-	return c.maxFailures
+func (c *Config) MaxAllowedFailures() int {
+	return c.maxAllowedFailures
 }
 
 func (c *Config) TotalAppCount() int {
@@ -77,6 +77,6 @@ func (c *Config) setAppAndFailureCounts(logger lager.Logger) {
 		totalAppCount += appDef.AppCount
 	}
 	c.totalAppCount = c.NumBatches * totalAppCount
-	c.maxFailures = int(math.Floor(c.Tolerance * float64(c.totalAppCount)))
-	logger.Info("config-counts", lager.Data{"app-count": c.totalAppCount, "max-failure": c.maxFailures})
+	c.maxAllowedFailures = int(math.Floor(c.Tolerance * float64(c.totalAppCount)))
+	logger.Info("config-counts", lager.Data{"app-count": c.totalAppCount, "max-failure": c.maxAllowedFailures})
 }
