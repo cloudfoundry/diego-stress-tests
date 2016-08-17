@@ -49,7 +49,7 @@ func main() {
 		logTicker = time.NewTicker(time.Hour)
 		logTicker.Stop()
 	}
-
+	rand.Seed(int64(time.Now().Nanosecond()))
 	if minSecondsTilCrash > 0 && maxSecondsTilCrash > 0 {
 		secondsTilCrash := rand.Intn(maxSecondsTilCrash-minSecondsTilCrash) + minSecondsTilCrash
 		crashTimer = time.NewTimer(time.Second * time.Duration(secondsTilCrash))
