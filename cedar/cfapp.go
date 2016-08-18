@@ -18,6 +18,7 @@ const (
 
 type CfApp interface {
 	AppName() string
+	Url() string
 	Push(context context.Context, payload string, timeout time.Duration) error
 	Start(context context.Context, timeout time.Duration) error
 	Guid(context context.Context, timeout time.Duration) (string, error)
@@ -50,6 +51,10 @@ func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath st
 
 func (a *cfApp) AppName() string {
 	return a.appName
+}
+
+func (a *cfApp) Url() string {
+	return a.appRoute.String()
 }
 
 func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration) error {

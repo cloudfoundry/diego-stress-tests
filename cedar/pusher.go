@@ -23,6 +23,7 @@ type State struct {
 type AppStateMetrics struct {
 	AppName    *string `json:"app_name"`
 	AppGuid    *string `json:"app_guid"`
+	AppUrl     *string `json:"app_url"`
 	PushState  *State  `json:"push"`
 	StartState *State  `json:"start"`
 }
@@ -116,9 +117,11 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 			}
 
 			name := seedApp.AppName()
+			url := seedApp.Url()
 			p.AppStates[name] = &AppStateMetrics{
 				AppName:    &name,
 				AppGuid:    guid,
+				AppUrl:     &url,
 				PushState:  &State{},
 				StartState: &State{},
 			}
