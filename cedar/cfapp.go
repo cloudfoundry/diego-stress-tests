@@ -62,10 +62,9 @@ func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration
 
 	ctx, _ = context.WithTimeout(ctx, timeout)
 
-	defer logger.Info("completed")
-
 	_, err := cf(ctx, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
 	if err != nil {
+		logger.Error("failed-to-push", err)
 		return err
 	}
 	endpointToHit := fmt.Sprintf(AppRoutePattern, a.appName, a.domain)
@@ -74,6 +73,7 @@ func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration
 		logger.Error("failed-to-set-env", err)
 		return err
 	}
+	logger.Info("completed")
 	logger.Debug("successful-set-env", lager.Data{"ENDPOINT_TO_HIT": endpointToHit})
 	return nil
 }
@@ -85,7 +85,6 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 	}
 	logger = logger.Session("start", lager.Data{"app": a.appName})
 	logger.Info("started")
-	defer logger.Info("completed")
 
 	ctx, _ = context.WithTimeout(ctx, timeout)
 
@@ -100,6 +99,7 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 		logger.Error("failed-curling-app", err)
 		return err
 	}
+	logger.Info("completed")
 	logger.Debug("successful-response-starting", lager.Data{"response": response})
 	return nil
 }

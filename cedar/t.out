@@ -1,0 +1,20 @@
+{"timestamp":"1471542457.506170034","source":"cedar","message":"cedar.pushing-apps.started","log_level":1,"data":{"max-allowed-failures":21,"session":"10"}}
+{"timestamp":"1471542457.506270885","source":"cedar","message":"cedar.push.started","log_level":1,"data":{"app":"cedarapp-0-crashing-1","session":"11"}}
+{"timestamp":"1471542464.071723461","source":"cedar","message":"cedar.push.completed","log_level":1,"data":{"app":"cedarapp-0-crashing-1","session":"11"}}
+{"timestamp":"1471542464.071801186","source":"cedar","message":"cedar.guid.started","log_level":1,"data":{"app":"cedarapp-0-crashing-1","session":"14"}}
+{"timestamp":"1471542464.372403383","source":"cedar","message":"cedar.guid.completed","log_level":1,"data":{"app":"cedarapp-0-crashing-1","session":"14"}}
+{"timestamp":"1471542464.372448444","source":"cedar","message":"cedar.pushing-apps.pushed-app-and-retrieved-guid","log_level":1,"data":{"AppName":"cedarapp-0-crashing-1","max-allowed-failures":21,"session":"10"}}
+{"timestamp":"1471542464.372487783","source":"cedar","message":"cedar.push.started","log_level":1,"data":{"app":"cedarapp-0-light-group-0","session":"16"}}
+{"timestamp":"1471542471.693334103","source":"cedar","message":"cedar.push.completed","log_level":1,"data":{"app":"cedarapp-0-light-group-0","session":"16"}}
+{"timestamp":"1471542471.693396330","source":"cedar","message":"cedar.guid.started","log_level":1,"data":{"app":"cedarapp-0-light-group-0","session":"19"}}
+{"timestamp":"1471542471.859528542","source":"cedar","message":"cedar.guid.completed","log_level":1,"data":{"app":"cedarapp-0-light-group-0","session":"19"}}
+{"timestamp":"1471542471.859572411","source":"cedar","message":"cedar.pushing-apps.pushed-app-and-retrieved-guid","log_level":1,"data":{"AppName":"cedarapp-0-light-group-0","max-allowed-failures":21,"session":"10"}}
+{"timestamp":"1471542471.859609604","source":"cedar","message":"cedar.push.started","log_level":1,"data":{"app":"cedarapp-0-light-5","session":"21"}}
+{"timestamp":"1471542478.477199078","source":"cedar","message":"cedar.push.completed","log_level":1,"data":{"app":"cedarapp-0-light-5","session":"21"}}
+{"timestamp":"1471542478.477259874","source":"cedar","message":"cedar.guid.started","log_level":1,"data":{"app":"cedarapp-0-light-5","session":"24"}}
+{"timestamp":"1471542478.638773441","source":"cedar","message":"cedar.guid.completed","log_level":1,"data":{"app":"cedarapp-0-light-5","session":"24"}}
+{"timestamp":"1471542478.638838768","source":"cedar","message":"cedar.pushing-apps.pushed-app-and-retrieved-guid","log_level":1,"data":{"AppName":"cedarapp-0-light-5","max-allowed-failures":21,"session":"10"}}
+{"timestamp":"1471542478.638877392","source":"cedar","message":"cedar.push.started","log_level":1,"data":{"app":"cedarapp-0-light-6","session":"26"}}
+{"timestamp":"1471542485.268177748","source":"cedar","message":"cedar.cf.failed-running-cf-command","log_level":2,"data":{"args":["set-env","cedarapp-0-light-6","ENDPOINT_TO_HIT","http://cedarapp-0-light-6.bosh-lite.com"],"error":"exit status 1","session":"28"}}
+{"timestamp":"1471542485.268259287","source":"cedar","message":"cedar.push.failed-to-set-env","log_level":2,"data":{"app":"cedarapp-0-light-6","error":"exit status 1","session":"26"}}
+{"timestamp":"1471542485.268275023","source":"cedar","message":"cedar.pushing-apps.failed-pushing-app","log_level":2,"data":{"AppName":"cedarapp-0-light-6","error":"exit status 1","max-allowed-failures":21,"session":"10","total-incurred-failures":1}}

@@ -79,22 +79,11 @@ func (m *Mapper) getEntry(key string) *chug.Entry {
 }
 
 func mapAll(in <-chan chug.Entry, metrics chan<- Metric, mappers ...*Mapper) {
-	batchSize := 1000
-	semaphore := make(chan struct{}, batchSize)
-	wg := sync.WaitGroup{}
-
 	for entry := range in {
-		semaphore <- struct{}{}
-		go func(entry chug.Entry) {
-			for _, mapper := range mappers {
-				wg.Add(1)
-				mapper.processEntry(entry, metrics)
-				wg.Done()
-			}
-			<-semaphore
-		}(entry)
+		for _, mapper := range mappers {
+			mapper.processEntry(entry, metrics)
+		}
 	}
-	wg.Wait()
 
 	for _, mapper := range mappers {
 		if mapper.metricsFound == 0 {

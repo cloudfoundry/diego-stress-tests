@@ -14,7 +14,7 @@ const metricPrefix = "cf.diego."
 func main() {
 	flag.Parse()
 
-	chugOut := make(chan chug.Entry)
+	chugOut := make(chan chug.Entry, 1)
 	go chug.Chug(os.Stdin, chugOut)
 
 	metrics := make(chan Metric)
@@ -33,10 +33,14 @@ func main() {
 	}()
 
 	mapAll(chugOut, metrics,
-		RequestLatencyMapper,
-		AuctionSchedulingMapper,
-		TaskLifecycleMapper,
-		LRPLifecycleMapper,
+		// RequestLatencyMapper,
+		// AuctionSchedulingMapper,
+		// TaskLifecycleMapper,
+		// LRPLifecycleMapper,
+		CedarSuccessfulPushMapper,
+		// CedarFailedPushMapper,
+		// CedarSuccessfulStartMapper,
+		// CedarFailedStartMapper,
 	)
 }
 
