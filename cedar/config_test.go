@@ -21,6 +21,7 @@ var _ = Describe("Cedar", func() {
 			Tolerance:        0.5,
 			Domain:           "bosh-lite.com",
 			AppPayload:       "assets/temp-app",
+			Prefix:           "cedarapp",
 			ConfigFile:       fakeConfigFile,
 			OutputFile:       "tmp/output.json",
 			Timeout:          30,

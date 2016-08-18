@@ -31,7 +31,7 @@ func (a appGenerator) Apps(ctx context.Context) []CfApp {
 	for i := 0; i < a.config.NumBatches; i++ {
 		for _, appDef := range a.config.appTypes {
 			for j := 0; j < appDef.AppCount; j++ {
-				name := fmt.Sprintf("%s-batch-%d-%d", appDef.AppNamePrefix, i, j)
+				name := a.appName(a.config, appDef.AppNamePrefix, i, j)
 				logger.Info("generate-app", lager.Data{"appName": name})
 				seedApp, err := NewCfApp(name, a.config.Domain, a.config.MaxPollingErrors, appDef.ManifestPath)
 				if err != nil {
@@ -43,4 +43,8 @@ func (a appGenerator) Apps(ctx context.Context) []CfApp {
 		}
 	}
 	return apps
+}
+
+func (a appGenerator) appName(config Config, appName string, batchSeq, appSeq int) string {
+	return fmt.Sprintf("%s-%d-%s-%d", config.Prefix, batchSeq, appName, appSeq)
 }

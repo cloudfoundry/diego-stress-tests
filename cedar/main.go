@@ -27,6 +27,7 @@ var (
 	configFile       = flag.String("config", "config.json", "path to cedar config file")
 	outputFile       = flag.String("output", "output.json", "path to cedar metric results file")
 	appPayload       = flag.String("payload", "assets/temp-app", "directory containing the stress-app payload to push")
+	prefix           = flag.String("prefix", "cedarapp", "the naming prefix for cedar generated apps")
 	timeout          = flag.Int("timeout", 30, "time allowed for a push or start operation , in seconds")
 )
 
@@ -45,6 +46,7 @@ func main() {
 		MaxPollingErrors: *maxPollingErrors,
 		Tolerance:        *tolerance,
 		AppPayload:       *appPayload,
+		Prefix:           *prefix,
 		Domain:           *domain,
 		ConfigFile:       *configFile,
 		OutputFile:       *outputFile,

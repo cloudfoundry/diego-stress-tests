@@ -21,6 +21,7 @@ var _ = Describe("AppGenerator", func() {
 			Tolerance:        0.5,
 			Domain:           "fake-domain.com",
 			AppPayload:       "assets/fake-folder",
+			Prefix:           "cedarapp",
 			ConfigFile:       fakeConfigFile,
 			OutputFile:       "tmp/dummy-file.json",
 			Timeout:          30,
@@ -40,11 +41,27 @@ var _ = Describe("AppGenerator", func() {
 		cfApps = appGenerator.Apps(ctx)
 	})
 
-	Context("when a valid config is input", func() {
+	Context("when a valid config is provided", func() {
 		It("should generate correct number of cf apps", func() {
 			Expect(len(cfApps)).To(Equal(12))
 			for _, app := range cfApps {
-				Expect(app.AppName()).To(MatchRegexp("light|medium"))
+				Expect(app.AppName()).To(
+					MatchRegexp(`cedarapp-\d-light-\d|cedarapp-\d-medium-group-\d`),
+				)
+			}
+		})
+	})
+
+	Context("when an app prefix is porvided", func() {
+		BeforeEach(func() {
+			config.Prefix = "cf-2016-08-16T1600"
+		})
+		It("should generate correct number of cf apps", func() {
+			Expect(len(cfApps)).To(Equal(12))
+			for _, app := range cfApps {
+				Expect(app.AppName()).To(
+					MatchRegexp(`cf-2016-08-16T1600-\d-light-\d|cf-2016-08-16T1600-\d-medium-group-\d`),
+				)
 			}
 		})
 	})

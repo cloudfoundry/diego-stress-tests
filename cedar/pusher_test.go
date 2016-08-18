@@ -72,6 +72,7 @@ var _ = Describe("Pusher", func() {
 			Tolerance:        0.5,
 			Domain:           "fake-domain.com",
 			AppPayload:       "assets/fake-folder",
+			Prefix:           "cedarapp",
 			ConfigFile:       fakeConfigFile,
 			OutputFile:       "tmp/dummy-file.json",
 			Timeout:          30,

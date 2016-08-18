@@ -22,6 +22,7 @@ type Config struct {
 	Tolerance        float64
 	Domain           string
 	AppPayload       string
+	Prefix           string
 	ConfigFile       string
 	OutputFile       string
 	Timeout          int
