@@ -134,3 +134,34 @@ var LRPLifecycleMapper = &Mapper{
 
 	entriesMap: make(map[string]chug.Entry),
 }
+
+var CedarSuccessfulPushMapper = &Mapper{
+	Name: "CedarSuccessfulPushMapper",
+
+	StartString: "cedar.push.started",
+	EndString:   "cedar.push.completed",
+
+	Transform: func(s, e chug.Entry) Metric {
+		component := strings.Split(e.Log.Message, ".")[0]
+		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		return Metric{
+			Name: "CedarSuccessfulPush",
+			Tags: map[string]string{
+				"component": component,
+				"app":       fmt.Sprint(e.Log.Data["app"]),
+				"session":   fmt.Sprint(e.Log.Data["session"]),
+			},
+			Value:     strconv.FormatInt(int64(timeDiff), 10),
+			Timestamp: s.Log.Timestamp,
+		}
+	},
+
+	GetKey: func(entry chug.Entry) (string, error) {
+		if entry.Log.Data["app"] == nil {
+			return "", fmt.Errorf("not a cedar push log line")
+		}
+		return fmt.Sprint(entry.Log.Data["app"]), nil
+	},
+
+	entriesMap: make(map[string]chug.Entry),
+}
