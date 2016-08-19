@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -94,7 +96,7 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 		return err
 	}
 
-	response, err := a.Curl("")
+	response, err := a.curl(ctx)
 	if err != nil {
 		logger.Error("failed-curling-app", err)
 		return err
@@ -123,32 +125,48 @@ func (a *cfApp) Guid(ctx context.Context, timeout time.Duration) (string, error)
 	return strings.Trim(string(output), "\n"), nil
 }
 
-func (a *cfApp) Curl(endpoint string) (string, error) {
+func (a *cfApp) curl(ctx context.Context) (string, error) {
+	logger, ok := ctx.Value("logger").(lager.Logger)
+	if !ok {
+		logger, _ = cflager.New("cedar")
+	}
+	logger = logger.Session("curl", lager.Data{"app": a.appName})
+	logger.Info("started")
+	defer logger.Info("completed")
+
 	endpointUrl := a.appRoute
-	endpointUrl.Path = endpoint
+	endpointUrl.Path = ""
 
 	url := endpointUrl.String()
 
-	statusCode, body, err := curl(url)
+	resp, err := http.Get(url)
 	if err != nil {
+		logger.Error("failed-to-curl", err)
 		return "", err
 	}
 
-	a.attemptedCurls++
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("failed-to-curl", err)
+		return "", err
+	}
 
+	statusCode, body := resp.StatusCode, string(bytes)
+
+	a.attemptedCurls++
 	switch {
 	case statusCode == 200:
 		return string(body), nil
 
 	case a.shouldRetryRequest(statusCode):
-		fmt.Println("RETRYING CURL", newCurlErr(url, statusCode, body).Error())
 		a.failedCurls++
+		logger.Error("retrying-curl", err, lager.Data{"url": url, "status-code": statusCode, "body": body, "retry": a.failedCurls})
 		time.Sleep(2 * time.Second)
-		return a.Curl(endpoint)
+		return a.curl(ctx)
 
 	default:
-		err := newCurlErr(url, statusCode, body)
-		fmt.Println("FAILED CURL", err.Error())
+		logger.Error("failed-to-curl", err, lager.Data{"url": url, "status-code": statusCode, "body": body})
 		a.failedCurls++
 		return "", err
 	}

@@ -10,7 +10,6 @@ import (
 var _ = Describe("AppGenerator", func() {
 	var config Config
 	var ctx context.Context
-	var cancel context.CancelFunc
 	var cfApps []CfApp
 
 	BeforeEach(func() {
@@ -29,7 +28,7 @@ var _ = Describe("AppGenerator", func() {
 	})
 
 	JustBeforeEach(func() {
-		ctx, cancel = context.WithCancel(
+		ctx, _ = context.WithCancel(
 			context.WithValue(context.Background(),
 				"logger",
 				fakeLogger,

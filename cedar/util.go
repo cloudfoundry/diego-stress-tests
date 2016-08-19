@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os/exec"
 
 	"code.cloudfoundry.org/cflager"
@@ -59,23 +57,4 @@ func cf(ctx context.Context, args ...string) ([]byte, error) {
 			return output, nil
 		}
 	}
-}
-
-func curl(url string) (statusCode int, body string, err error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return 0, "", err
-	}
-
-	defer resp.Body.Close()
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, "", err
-	}
-	return resp.StatusCode, string(bytes), nil
-}
-
-func newCurlErr(url string, statusCode int, body string) error {
-	return fmt.Errorf("Endpoint: %s, Status Code: %d, Body: %s", url, statusCode, body)
 }
