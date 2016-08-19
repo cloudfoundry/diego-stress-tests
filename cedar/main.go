@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 
 	"golang.org/x/net/context"
 
@@ -10,14 +9,6 @@ import (
 )
 
 var (
-	cfAPI             = flag.String("api", "api.bosh-lite.com", "location of the cloud controller api")
-	adminUser         = flag.String("admin-user", "admin", "uaa admin user")
-	adminPassword     = flag.String("admin-password", "admin", "uaa admin password")
-	skipSSLValidation = flag.Bool("skip-ssl-validation", true, "skip ssl validation")
-
-	orgName   = flag.String("org", "stress-tests-org", "organization to use for stress tests")
-	spaceName = flag.String("space", "stress-tests-space", "space to use for stress tests")
-
 	domain = flag.String("domain", "bosh-lite.com", "app domain")
 
 	numBatches       = flag.Int("n", 1, "number of batches to seed")
@@ -62,13 +53,6 @@ func main() {
 			logger,
 		),
 	)
-
-	ctxWithTimeout, _ := context.WithTimeout(ctx, config.TimeoutDuration())
-	err := setupCFCLI(ctxWithTimeout)
-	if err != nil {
-		logger.Error("failed-to-setup-cf", err)
-		os.Exit(1)
-	}
 
 	apps := NewAppGenerator(config).Apps(ctx)
 
