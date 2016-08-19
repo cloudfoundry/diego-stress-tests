@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -17,7 +16,7 @@ type State struct {
 	Succeeded bool    `json:"succeeded"`
 	StartTime *string `json:"start_time"`
 	EndTime   *string `json:"end_time"`
-	Duration  *string `json:"duration"`
+	Duration  int64   `json:"duration_ns"`
 }
 
 type AppStateMetrics struct {
@@ -208,7 +207,7 @@ func (p *Pusher) GenerateReport(ctx context.Context, cancel context.CancelFunc) 
 		[]AppStateMetrics{},
 	}
 
-	metricsFile, err := os.OpenFile(p.config.OutputFile, os.O_RDWR|os.O_CREATE, 0644)
+	metricsFile, err := os.OpenFile(p.config.OutputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	defer metricsFile.Close()
 
 	if err != nil {
@@ -231,12 +230,12 @@ func (p *Pusher) updateReport(reportType, name string, succeeded bool, startTime
 	case Start:
 		report = p.AppStates[name].StartState
 	}
-	start := strconv.FormatInt(startTime.UnixNano(), 10)
-	end := strconv.FormatInt(endTime.UnixNano(), 10)
-	duration := strconv.FormatInt(endTime.UnixNano()-startTime.UnixNano(), 10)
+	start := startTime.Format("2006-01-02T15:04:05.000-0700")
+	end := endTime.Format("2006-01-02T15:04:05.000-0700")
+	duration := endTime.UnixNano() - startTime.UnixNano()
 
 	report.Succeeded = succeeded
 	report.StartTime = &start
 	report.EndTime = &end
-	report.Duration = &duration
+	report.Duration = duration
 }
