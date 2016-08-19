@@ -149,7 +149,7 @@ var _ = Describe("Pusher", func() {
 					for _, r := range pusher.AppStates {
 						if r.PushState.Succeeded {
 							Expect(r.AppGuid).NotTo(BeNil())
-							Expect(r.PushState.Duration).NotTo(BeNil())
+							Expect(r.PushState.Duration).NotTo(BeZero())
 							Expect(r.PushState.StartTime).NotTo(BeNil())
 							Expect(r.PushState.EndTime).NotTo(BeNil())
 						} else {
@@ -158,7 +158,7 @@ var _ = Describe("Pusher", func() {
 							Expect(r.StartState.Succeeded).To(BeFalse())
 							Expect(r.StartState.StartTime).To(BeNil())
 							Expect(r.StartState.EndTime).To(BeNil())
-							Expect(r.StartState.Duration).To(BeNil())
+							Expect(r.StartState.Duration).To(BeZero())
 						}
 					}
 					Expect(numFailed).To(Equal(tolerance + 1))
@@ -186,7 +186,7 @@ var _ = Describe("Pusher", func() {
 						if r.PushState.Succeeded {
 							numSucceeded++
 							Expect(r.AppGuid).NotTo(BeNil())
-							Expect(r.PushState.Duration).NotTo(BeNil())
+							Expect(r.PushState.Duration).NotTo(BeZero())
 							Expect(r.PushState.StartTime).NotTo(BeNil())
 							Expect(r.PushState.EndTime).NotTo(BeNil())
 						}
@@ -216,7 +216,7 @@ var _ = Describe("Pusher", func() {
 					for _, r := range pusher.AppStates {
 						Expect(appNames).To(ContainElement(*r.AppName))
 						Expect(r.StartState.Succeeded).To(BeTrue())
-						Expect(r.StartState.Duration).NotTo(BeNil())
+						Expect(r.StartState.Duration).NotTo(BeZero())
 						Expect(r.StartState.StartTime).NotTo(BeNil())
 						Expect(r.StartState.EndTime).NotTo(BeNil())
 					}
@@ -257,7 +257,7 @@ var _ = Describe("Pusher", func() {
 						var numFailed = 0
 						for _, r := range pusher.AppStates {
 							if r.StartState.Succeeded {
-								Expect(r.StartState.Duration).NotTo(BeNil())
+								Expect(r.StartState.Duration).NotTo(BeZero())
 								Expect(r.StartState.StartTime).NotTo(BeNil())
 								Expect(r.StartState.EndTime).NotTo(BeNil())
 							} else {
@@ -287,7 +287,7 @@ var _ = Describe("Pusher", func() {
 							Expect(appNames).To(ContainElement(*r.AppName))
 							if r.StartState.Succeeded {
 								numSucceeded++
-								Expect(r.StartState.Duration).NotTo(BeNil())
+								Expect(r.StartState.Duration).NotTo(BeZero())
 								Expect(r.StartState.StartTime).NotTo(BeNil())
 								Expect(r.StartState.EndTime).NotTo(BeNil())
 							}
