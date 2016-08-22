@@ -8,4 +8,4 @@ applications:
   disk_quota: 100M
   env:
     LOGS_PER_SECOND: 0
-    REQUEST_PER_SECOND: 1
+    REQUEST_PER_SECOND: 0.5
