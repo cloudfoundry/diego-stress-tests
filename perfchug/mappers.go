@@ -151,7 +151,7 @@ var CedarSuccessfulPushMapper = &Mapper{
 			Tags: map[string]string{
 				"component": component,
 				"app":       fmt.Sprint(e.Log.Data["app"]),
-				"session":   fmt.Sprint(e.Log.Data["session"]),
+				"session":   fmt.Sprint(e.Log.Session),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: timeMean,
@@ -185,7 +185,7 @@ var CedarFailedPushMapper = &Mapper{
 			Tags: map[string]string{
 				"component": component,
 				"app":       fmt.Sprint(e.Log.Data["app"]),
-				"session":   fmt.Sprint(e.Log.Data["session"]),
+				"session":   fmt.Sprint(e.Log.Session),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: timeMean,
@@ -218,7 +218,7 @@ var CedarSuccessfulStartMapper = &Mapper{
 			Tags: map[string]string{
 				"component": component,
 				"app":       fmt.Sprint(e.Log.Data["app"]),
-				"session":   fmt.Sprint(e.Log.Data["session"]),
+				"session":   fmt.Sprint(e.Log.Session),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: timeMean,
@@ -251,7 +251,7 @@ var CedarFailedStartMapper = &Mapper{
 			Tags: map[string]string{
 				"component": component,
 				"app":       fmt.Sprint(e.Log.Data["app"]),
-				"session":   fmt.Sprint(e.Log.Data["session"]),
+				"session":   fmt.Sprint(e.Log.Session),
 			},
 			Value:     strconv.FormatInt(int64(timeDiff), 10),
 			Timestamp: timeMean,
