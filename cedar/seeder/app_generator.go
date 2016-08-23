@@ -1,18 +1,19 @@
-package main
+package seeder
 
 import (
 	"fmt"
 
 	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
 	"code.cloudfoundry.org/lager"
 	"golang.org/x/net/context"
 )
 
 type appGenerator struct {
-	config Config
+	config config.Config
 }
 
-func NewAppGenerator(config Config) appGenerator {
+func NewAppGenerator(config config.Config) appGenerator {
 	return appGenerator{
 		config: config,
 	}
@@ -29,9 +30,9 @@ func (a appGenerator) Apps(ctx context.Context) []CfApp {
 
 	apps := []CfApp{}
 	for i := 0; i < a.config.NumBatches; i++ {
-		for _, appDef := range a.config.appTypes {
+		for _, appDef := range a.config.AppTypes() {
 			for j := 0; j < appDef.AppCount; j++ {
-				name := a.appName(a.config, appDef.AppNamePrefix, i, j)
+				name := a.appName(appDef.AppNamePrefix, i, j)
 				logger.Info("generate-app", lager.Data{"appName": name})
 				seedApp, err := NewCfApp(name, a.config.Domain, a.config.MaxPollingErrors, appDef.ManifestPath)
 				if err != nil {
@@ -45,6 +46,6 @@ func (a appGenerator) Apps(ctx context.Context) []CfApp {
 	return apps
 }
 
-func (a appGenerator) appName(config Config, appName string, batchSeq, appSeq int) string {
-	return fmt.Sprintf("%s-%d-%s-%d", config.Prefix, batchSeq, appName, appSeq)
+func (a appGenerator) appName(appName string, batchSeq, appSeq int) string {
+	return fmt.Sprintf("%s-%d-%s-%d", a.config.Prefix, batchSeq, appName, appSeq)
 }

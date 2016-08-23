@@ -1,4 +1,4 @@
-package main
+package seeder
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 	"golang.org/x/net/context"
 
 	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -31,31 +33,34 @@ const (
 	Start = "start"
 )
 
-type Pusher struct {
+type Deployer struct {
 	errChan chan error
-	config  Config
+	config  config.Config
 
 	AppsToPush  []CfApp
 	AppsToStart []CfApp
 	AppStates   map[string]*AppStateMetrics
+
+	client *cli.CFClient
 }
 
-func NewPusher(config Config, apps []CfApp) Pusher {
-	p := Pusher{
-		errChan:    make(chan error, config.maxAllowedFailures),
+func NewDeployer(config config.Config, apps []CfApp, cli *cli.CFClient) Deployer {
+	p := Deployer{
+		errChan:    make(chan error, config.MaxAllowedFailures()),
 		AppStates:  make(map[string]*AppStateMetrics),
 		config:     config,
 		AppsToPush: apps,
+		client:     cli,
 	}
 	return p
 }
 
-func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
+func (p *Deployer) PushApps(ctx context.Context, cancel context.CancelFunc) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
-	logger = logger.Session("pushing-apps", lager.Data{"max-allowed-failures": p.config.maxAllowedFailures})
+	logger = logger.Session("pushing-apps", lager.Data{"max-allowed-failures": p.config.MaxAllowedFailures()})
 	logger.Info("started")
 	defer logger.Info("complete")
 
@@ -86,7 +91,7 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 			default:
 				succeeded = true
 				startTime = time.Now()
-				err = seedApp.Push(ctx, p.config.AppPayload, p.config.TimeoutDuration())
+				err = seedApp.Push(ctx, p.client, p.config.AppPayload, p.config.TimeoutDuration())
 				endTime = time.Now()
 			}
 
@@ -100,7 +105,7 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 					cancel()
 				}
 			} else {
-				appGuid, err := seedApp.Guid(ctx, p.config.TimeoutDuration())
+				appGuid, err := seedApp.Guid(ctx, p.client, p.config.TimeoutDuration())
 				if err != nil {
 					logger.Error("failed-getting-app-guid", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
 					guid = nil
@@ -130,12 +135,12 @@ func (p *Pusher) PushApps(ctx context.Context, cancel context.CancelFunc) {
 	logger.Info("done-pushing-apps", lager.Data{"seed-apps": len(p.AppsToStart)})
 }
 
-func (p *Pusher) StartApps(ctx context.Context, cancel context.CancelFunc) {
+func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
-	logger = logger.Session("starting-apps", lager.Data{"max-allowed-failures": p.config.maxAllowedFailures})
+	logger = logger.Session("starting-apps", lager.Data{"max-allowed-failures": p.config.MaxAllowedFailures()})
 	logger.Info("started")
 	defer logger.Info("completed")
 
@@ -164,7 +169,7 @@ func (p *Pusher) StartApps(ctx context.Context, cancel context.CancelFunc) {
 			default:
 				succeeded = true
 				startTime = time.Now()
-				err = appToStart.Start(ctx, p.config.TimeoutDuration())
+				err = appToStart.Start(ctx, p.client, p.config.TimeoutDuration())
 				endTime = time.Now()
 				logger.Info("started-app", lager.Data{"AppName": appToStart.AppName()})
 			}
@@ -186,11 +191,14 @@ func (p *Pusher) StartApps(ctx context.Context, cancel context.CancelFunc) {
 	wg.Wait()
 }
 
-func (p *Pusher) GenerateReport(ctx context.Context, cancel context.CancelFunc) {
+func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
+	logger.Session("generate-reports")
+	logger.Info("started")
+	defer logger.Info("completed")
 
 	succeeded := true
 	select {
@@ -222,7 +230,7 @@ func (p *Pusher) GenerateReport(ctx context.Context, cancel context.CancelFunc) 
 	jsonParser.Encode(report)
 }
 
-func (p *Pusher) updateReport(reportType, name string, succeeded bool, startTime, endTime time.Time) {
+func (p *Deployer) updateReport(reportType, name string, succeeded bool, startTime, endTime time.Time) {
 	var report *State
 	switch reportType {
 	case Push:

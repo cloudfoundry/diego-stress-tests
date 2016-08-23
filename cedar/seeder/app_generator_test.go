@@ -1,19 +1,20 @@
-package main_test
+package seeder_test
 
 import (
-	. "code.cloudfoundry.org/diego-stress-tests/cedar"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
 )
 
 var _ = Describe("AppGenerator", func() {
-	var config Config
+	var cfg config.Config
 	var ctx context.Context
-	var cfApps []CfApp
+	var cfApps []seeder.CfApp
 
 	BeforeEach(func() {
-		config = Config{
+		cfg = config.Config{
 			NumBatches:       1,
 			MaxInFlight:      1,
 			MaxPollingErrors: 1,
@@ -35,8 +36,8 @@ var _ = Describe("AppGenerator", func() {
 			),
 		)
 
-		config.Init(fakeLogger)
-		appGenerator := NewAppGenerator(config)
+		cfg.Init(fakeLogger)
+		appGenerator := seeder.NewAppGenerator(cfg)
 		cfApps = appGenerator.Apps(ctx)
 	})
 
@@ -53,7 +54,7 @@ var _ = Describe("AppGenerator", func() {
 
 	Context("when an app prefix is porvided", func() {
 		BeforeEach(func() {
-			config.Prefix = "cf-2016-08-16T1600"
+			cfg.Prefix = "cf-2016-08-16T1600"
 		})
 		It("should generate correct number of cf apps", func() {
 			Expect(len(cfApps)).To(Equal(12))

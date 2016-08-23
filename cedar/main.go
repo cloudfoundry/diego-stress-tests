@@ -6,6 +6,9 @@ import (
 	"golang.org/x/net/context"
 
 	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
 )
 
 var (
@@ -31,7 +34,7 @@ func main() {
 	logger.Info("started")
 	defer logger.Info("exited")
 
-	config := Config{
+	config := config.Config{
 		NumBatches:       *numBatches,
 		MaxInFlight:      *maxInFlight,
 		MaxPollingErrors: *maxPollingErrors,
@@ -54,10 +57,13 @@ func main() {
 		),
 	)
 
-	apps := NewAppGenerator(config).Apps(ctx)
+	apps := seeder.NewAppGenerator(config).Apps(ctx)
 
-	pusher := NewPusher(config, apps)
-	pusher.PushApps(ctx, cancel)
-	pusher.StartApps(ctx, cancel)
-	pusher.GenerateReport(ctx, cancel)
+	cfClient := cli.NewCfClient(ctx, *maxInFlight)
+	defer cfClient.Cleanup(ctx)
+
+	deployer := seeder.NewDeployer(config, apps, &cfClient)
+	deployer.PushApps(ctx, cancel)
+	deployer.StartApps(ctx, cancel)
+	deployer.GenerateReport(ctx, cancel)
 }

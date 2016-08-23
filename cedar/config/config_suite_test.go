@@ -1,4 +1,4 @@
-package main_test
+package config_test
 
 import (
 	"io/ioutil"
@@ -7,7 +7,6 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -31,7 +30,7 @@ var configContent string = `
 var tempDir, fakeConfigFile string
 var fakeLogger lager.Logger
 
-func TestCedar(t *testing.T) {
+func TestConfig(t *testing.T) {
 	BeforeEach(func() {
 		tempDir, err := ioutil.TempDir("", "tmp")
 		Expect(err).NotTo(HaveOccurred())
@@ -48,5 +47,5 @@ func TestCedar(t *testing.T) {
 	})
 
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Cedar Suite")
+	RunSpecs(t, "Config Suite")
 }

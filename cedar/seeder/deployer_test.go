@@ -1,4 +1,4 @@
-package main_test
+package seeder_test
 
 import (
 	"encoding/json"
@@ -7,8 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	. "code.cloudfoundry.org/diego-stress-tests/cedar"
-	"code.cloudfoundry.org/diego-stress-tests/cedar/cedarfakes"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli/clifakes"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder/seederfakes"
 	"golang.org/x/net/context"
 
 	. "github.com/onsi/ginkgo"
@@ -22,20 +25,23 @@ type FakeCounts struct {
 	failingStart int
 }
 
-var _ = Describe("Pusher", func() {
-	var config Config
-	var pusher Pusher
+var _ = Describe("Deployer", func() {
+	var cfg config.Config
+	var deployer seeder.Deployer
 	var ctx context.Context
 	var cancel context.CancelFunc
+	var apps []seeder.CfApp
+	var appNames []string
+	var fakeCli cli.CFClient
 
-	generateFakeApps := func(fakeCounts FakeCounts) ([]string, []CfApp) {
+	generateFakeApps := func(fakeCounts FakeCounts) ([]string, []seeder.CfApp) {
 		Expect(fakeCounts.total).To(BeNumerically(">=", (fakeCounts.failingPush + fakeCounts.failingStart)))
 
-		apps := make([]CfApp, fakeCounts.total)
-		appNames := make([]string, fakeCounts.total)
+		apps = make([]seeder.CfApp, fakeCounts.total)
+		appNames = make([]string, fakeCounts.total)
 
 		for i := 0; i < fakeCounts.failingPush; i++ {
-			fakeApp := cedarfakes.FakeCfApp{}
+			fakeApp := seederfakes.FakeCfApp{}
 			name := fmt.Sprintf("fake-push-failing-app-%d", i)
 			fakeApp.AppNameReturns(name)
 			fakeApp.PushReturns(fmt.Errorf("failed-to-push"))
@@ -44,7 +50,7 @@ var _ = Describe("Pusher", func() {
 		}
 
 		for i := fakeCounts.failingPush; i < (fakeCounts.failingPush + fakeCounts.failingStart); i++ {
-			fakeApp := cedarfakes.FakeCfApp{}
+			fakeApp := seederfakes.FakeCfApp{}
 			name := fmt.Sprintf("fake-start-failing-app-%d", i)
 			fakeApp.AppNameReturns(name)
 			fakeApp.GuidReturns(fmt.Sprintf("fake-guid-%d", i), nil)
@@ -54,7 +60,7 @@ var _ = Describe("Pusher", func() {
 		}
 
 		for i := (fakeCounts.failingPush + fakeCounts.failingStart); i < fakeCounts.total; i++ {
-			fakeApp := cedarfakes.FakeCfApp{}
+			fakeApp := seederfakes.FakeCfApp{}
 			name := fmt.Sprintf("fake-app-%d", i)
 			fakeApp.AppNameReturns(name)
 			fakeApp.GuidReturns(fmt.Sprintf("fake-guid-%d", i), nil)
@@ -65,7 +71,7 @@ var _ = Describe("Pusher", func() {
 	}
 
 	BeforeEach(func() {
-		config = Config{
+		cfg = config.Config{
 			NumBatches:       1,
 			MaxInFlight:      1,
 			MaxPollingErrors: 1,
@@ -78,6 +84,8 @@ var _ = Describe("Pusher", func() {
 			Timeout:          30,
 		}
 
+		fakeCli = &clifakes.FakeCFClient{}
+
 		ctx, cancel = context.WithCancel(
 			context.WithValue(context.Background(),
 				"logger",
@@ -87,8 +95,6 @@ var _ = Describe("Pusher", func() {
 	})
 
 	Context("when pushing apps", func() {
-		var appNames []string
-		var apps []CfApp
 
 		Context("when all apps are pushed succesfully", func() {
 
@@ -96,14 +102,14 @@ var _ = Describe("Pusher", func() {
 
 			BeforeEach(func() {
 				appNames, apps = generateFakeApps(FakeCounts{total: successfulApps, failingPush: 0, failingStart: 0})
-				pusher = NewPusher(config, apps)
-				pusher.PushApps(ctx, cancel)
+				deployer = seeder.NewDeployer(cfg, apps, &fakeCli)
+				deployer.PushApps(ctx, cancel)
 			})
 
 			It("should have all apps ready to start", func() {
-				Expect(len(pusher.AppsToStart)).To(Equal(successfulApps))
-				Expect(len(pusher.AppStates)).To(Equal(successfulApps))
-				for _, r := range pusher.AppStates {
+				Expect(len(deployer.AppsToStart)).To(Equal(successfulApps))
+				Expect(len(deployer.AppStates)).To(Equal(successfulApps))
+				for _, r := range deployer.AppStates {
 					Expect(appNames).To(ContainElement(*r.AppName))
 					Expect(r.AppGuid).NotTo(BeNil())
 					Expect(r.PushState.Succeeded).To(BeTrue())
@@ -121,10 +127,10 @@ var _ = Describe("Pusher", func() {
 			const tolerance = 6  // Set by config
 
 			JustBeforeEach(func() {
-				config.Init(fakeLogger)
+				cfg.Init(fakeLogger)
 				appNames, apps = generateFakeApps(FakeCounts{total: totalApps, failingPush: failedPushes, failingStart: 0})
-				pusher = NewPusher(config, apps)
-				pusher.PushApps(ctx, cancel)
+				deployer = seeder.NewDeployer(cfg, apps, &fakeCli)
+				deployer.PushApps(ctx, cancel)
 			})
 
 			Context("when number of failing apps is greater than max failures allowed", func() {
@@ -133,7 +139,7 @@ var _ = Describe("Pusher", func() {
 				})
 
 				It("cancels pushing once tolerance is reached", func() {
-					attemptedPushes := len(pusher.AppStates)
+					attemptedPushes := len(deployer.AppStates)
 					for i := 0; i < tolerance+1; i++ {
 						Expect(fakeLogger).To(gbytes.Say("failed-pushing-app"))
 					}
@@ -146,7 +152,7 @@ var _ = Describe("Pusher", func() {
 
 				It("records the app state correctly", func() {
 					var numFailed = 0
-					for _, r := range pusher.AppStates {
+					for _, r := range deployer.AppStates {
 						if r.PushState.Succeeded {
 							Expect(r.AppGuid).NotTo(BeNil())
 							Expect(r.PushState.Duration).NotTo(BeZero())
@@ -171,7 +177,7 @@ var _ = Describe("Pusher", func() {
 				})
 
 				It("pushes all apps except for the failing ones", func() {
-					Expect(len(pusher.AppsToStart)).To(Equal(totalApps - failedPushes))
+					Expect(len(deployer.AppsToStart)).To(Equal(totalApps - failedPushes))
 					for i := 0; i < failedPushes; i++ {
 						Expect(fakeLogger).To(gbytes.Say("failed-pushing-app"))
 					}
@@ -179,9 +185,9 @@ var _ = Describe("Pusher", func() {
 				})
 
 				It("records app states", func() {
-					Expect(len(pusher.AppStates)).To(Equal(totalApps))
+					Expect(len(deployer.AppStates)).To(Equal(totalApps))
 					var numSucceeded = 0
-					for _, r := range pusher.AppStates {
+					for _, r := range deployer.AppStates {
 						Expect(appNames).To(ContainElement(*r.AppName))
 						if r.PushState.Succeeded {
 							numSucceeded++
@@ -191,15 +197,13 @@ var _ = Describe("Pusher", func() {
 							Expect(r.PushState.EndTime).NotTo(BeNil())
 						}
 					}
-					Expect(numSucceeded).To(Equal(len(pusher.AppStates) - failedPushes))
+					Expect(numSucceeded).To(Equal(len(deployer.AppStates) - failedPushes))
 				})
 			})
 
 		})
 
 		Context("when starting apps", func() {
-			var appNames []string
-			var apps []CfApp
 
 			Context("when all apps are pushed and started succesfully", func() {
 
@@ -207,13 +211,13 @@ var _ = Describe("Pusher", func() {
 
 				BeforeEach(func() {
 					appNames, apps = generateFakeApps(FakeCounts{total: successfulApps, failingPush: 0, failingStart: 0})
-					pusher = NewPusher(config, apps)
-					pusher.PushApps(ctx, cancel)
-					pusher.StartApps(ctx, cancel)
+					deployer = seeder.NewDeployer(cfg, apps, &fakeCli)
+					deployer.PushApps(ctx, cancel)
+					deployer.StartApps(ctx, cancel)
 				})
 
 				It("should have all apps started", func() {
-					for _, r := range pusher.AppStates {
+					for _, r := range deployer.AppStates {
 						Expect(appNames).To(ContainElement(*r.AppName))
 						Expect(r.StartState.Succeeded).To(BeTrue())
 						Expect(r.StartState.Duration).NotTo(BeZero())
@@ -230,11 +234,11 @@ var _ = Describe("Pusher", func() {
 				const tolerance = 6  // Set by config
 
 				JustBeforeEach(func() {
-					config.Init(fakeLogger)
+					cfg.Init(fakeLogger)
 					appNames, apps = generateFakeApps(FakeCounts{total: totalApps, failingPush: 0, failingStart: failedStart})
-					pusher = NewPusher(config, apps)
-					pusher.PushApps(ctx, cancel)
-					pusher.StartApps(ctx, cancel)
+					deployer = seeder.NewDeployer(cfg, apps, &fakeCli)
+					deployer.PushApps(ctx, cancel)
+					deployer.StartApps(ctx, cancel)
 				})
 
 				Context("when number of apps failing to start is greater than max failures allowed", func() {
@@ -243,7 +247,7 @@ var _ = Describe("Pusher", func() {
 					})
 
 					It("cancels starting once tolerance is reached", func() {
-						attemptedStart := len(pusher.AppStates)
+						attemptedStart := len(deployer.AppStates)
 						for i := 0; i < tolerance+1; i++ {
 							Expect(fakeLogger).To(gbytes.Say("failed-starting-app"))
 						}
@@ -255,7 +259,7 @@ var _ = Describe("Pusher", func() {
 
 					It("records the app state correctly", func() {
 						var numFailed = 0
-						for _, r := range pusher.AppStates {
+						for _, r := range deployer.AppStates {
 							if r.StartState.Succeeded {
 								Expect(r.StartState.Duration).NotTo(BeZero())
 								Expect(r.StartState.StartTime).NotTo(BeNil())
@@ -275,15 +279,15 @@ var _ = Describe("Pusher", func() {
 					})
 
 					It("starts all apps except for the failing ones", func() {
-						for i := 0; i < len(pusher.AppsToStart)-failedStart; i++ {
+						for i := 0; i < len(deployer.AppsToStart)-failedStart; i++ {
 							Expect(fakeLogger).To(gbytes.Say("started-app"))
 						}
 					})
 
 					It("records app states", func() {
-						Expect(len(pusher.AppStates)).To(Equal(totalApps))
+						Expect(len(deployer.AppStates)).To(Equal(totalApps))
 						var numSucceeded = 0
-						for _, r := range pusher.AppStates {
+						for _, r := range deployer.AppStates {
 							Expect(appNames).To(ContainElement(*r.AppName))
 							if r.StartState.Succeeded {
 								numSucceeded++
@@ -292,14 +296,13 @@ var _ = Describe("Pusher", func() {
 								Expect(r.StartState.EndTime).NotTo(BeNil())
 							}
 						}
-						Expect(numSucceeded).To(Equal(len(pusher.AppStates) - failedStart))
+						Expect(numSucceeded).To(Equal(len(deployer.AppStates) - failedStart))
 					})
 				})
 			})
 		})
 
 		Context("generate reports", func() {
-			var apps []CfApp
 			var dir, tmpFileName string
 			var err error
 			var jsonParser *json.Decoder
@@ -308,8 +311,8 @@ var _ = Describe("Pusher", func() {
 			var failedPushApps int = 0
 
 			report := struct {
-				Succeeded bool              `json:"succeeded"`
-				AppStates []AppStateMetrics `json:"apps"`
+				Succeeded bool                     `json:"succeeded"`
+				AppStates []seeder.AppStateMetrics `json:"apps"`
 			}{}
 
 			JustBeforeEach(func() {
@@ -318,13 +321,13 @@ var _ = Describe("Pusher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				tmpFileName = filepath.Join(dir, "tmpfile")
-				config.OutputFile = tmpFileName
+				cfg.OutputFile = tmpFileName
 
 				_, apps = generateFakeApps(FakeCounts{total: successfulApps, failingPush: failedPushApps, failingStart: 0})
-				pusher = NewPusher(config, apps)
-				pusher.PushApps(ctx, cancel)
-				pusher.StartApps(ctx, cancel)
-				pusher.GenerateReport(ctx, cancel)
+				deployer = seeder.NewDeployer(cfg, apps, &fakeCli)
+				deployer.PushApps(ctx, cancel)
+				deployer.StartApps(ctx, cancel)
+				deployer.GenerateReport(ctx, cancel)
 
 				Expect(tmpFileName).Should(BeAnExistingFile())
 				outputFile, err := os.Open(tmpFileName)

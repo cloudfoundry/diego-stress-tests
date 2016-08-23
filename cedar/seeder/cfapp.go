@@ -1,4 +1,4 @@
-package main
+package seeder
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/context"
 
 	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -20,9 +21,9 @@ const (
 
 type CfApp interface {
 	AppName() string
-	Push(context context.Context, payload string, timeout time.Duration) error
-	Start(context context.Context, timeout time.Duration) error
-	Guid(context context.Context, timeout time.Duration) (string, error)
+	Push(ctx context.Context, client *cli.CFClient, payload string, timeout time.Duration) error
+	Start(ctx context.Context, client *cli.CFClient, timeout time.Duration) error
+	Guid(ctx context.Context, client *cli.CFClient, timeout time.Duration) (string, error)
 }
 
 type cfApp struct {
@@ -54,7 +55,7 @@ func (a *cfApp) AppName() string {
 	return a.appName
 }
 
-func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration) error {
+func (a *cfApp) Push(ctx context.Context, cli *cli.CFClient, assetDir string, timeout time.Duration) error {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -64,13 +65,13 @@ func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration
 
 	ctx, _ = context.WithTimeout(ctx, timeout)
 
-	_, err := cf(ctx, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
+	_, err := (*cli).Cf(ctx, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
 	if err != nil {
 		logger.Error("failed-to-push", err)
 		return err
 	}
 	endpointToHit := fmt.Sprintf(AppRoutePattern, a.appName, a.domain)
-	_, err = cf(ctx, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
+	_, err = (*cli).Cf(ctx, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
 	if err != nil {
 		logger.Error("failed-to-set-env", err)
 		return err
@@ -80,7 +81,7 @@ func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration
 	return nil
 }
 
-func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
+func (a *cfApp) Start(ctx context.Context, cli *cli.CFClient, timeout time.Duration) error {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -90,7 +91,7 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 
 	ctx, _ = context.WithTimeout(ctx, timeout)
 
-	_, err := cf(ctx, "start", a.appName)
+	_, err := (*cli).Cf(ctx, "start", a.appName)
 	if err != nil {
 		logger.Error("failed-to-start", err)
 		return err
@@ -106,7 +107,7 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 	return nil
 }
 
-func (a *cfApp) Guid(ctx context.Context, timeout time.Duration) (string, error) {
+func (a *cfApp) Guid(ctx context.Context, cli *cli.CFClient, timeout time.Duration) (string, error) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -116,7 +117,7 @@ func (a *cfApp) Guid(ctx context.Context, timeout time.Duration) (string, error)
 	defer logger.Info("completed")
 
 	ctx, _ = context.WithTimeout(ctx, timeout)
-	output, err := cf(ctx, "app", "--guid", a.appName)
+	output, err := (*cli).Cf(ctx, "app", "--guid", a.appName)
 
 	if err != nil {
 		logger.Error("failed-to-get-guid", err)
