@@ -1,4 +1,4 @@
-package main
+package seeder
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/context"
 
 	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -20,12 +21,12 @@ const (
 
 type CfApp interface {
 	AppName() string
-	Push(context context.Context, payload string, timeout time.Duration) error
-	Start(context context.Context, timeout time.Duration) error
-	Guid(context context.Context, timeout time.Duration) (string, error)
+	Push(ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
+	Start(ctx context.Context, client cli.CFClient, timeout time.Duration) error
+	Guid(ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error)
 }
 
-type cfApp struct {
+type CfApplication struct {
 	appName        string
 	appRoute       url.URL
 	attemptedCurls int
@@ -41,7 +42,7 @@ func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath st
 	if err != nil {
 		return nil, err
 	}
-	return &cfApp{
+	return &CfApplication{
 		appName:        appName,
 		appRoute:       *appUrl,
 		domain:         domain,
@@ -50,11 +51,11 @@ func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath st
 	}, nil
 }
 
-func (a *cfApp) AppName() string {
+func (a *CfApplication) AppName() string {
 	return a.appName
 }
 
-func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration) error {
+func (a *CfApplication) Push(ctx context.Context, cli cli.CFClient, assetDir string, timeout time.Duration) error {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -62,15 +63,13 @@ func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration
 	logger = logger.Session("push", lager.Data{"app": a.appName})
 	logger.Info("started")
 
-	ctx, _ = context.WithTimeout(ctx, timeout)
-
-	_, err := cf(ctx, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
+	_, err := cli.Cf(ctx, timeout, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
 	if err != nil {
 		logger.Error("failed-to-push", err)
 		return err
 	}
 	endpointToHit := fmt.Sprintf(AppRoutePattern, a.appName, a.domain)
-	_, err = cf(ctx, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
+	_, err = cli.Cf(ctx, timeout, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
 	if err != nil {
 		logger.Error("failed-to-set-env", err)
 		return err
@@ -80,7 +79,7 @@ func (a *cfApp) Push(ctx context.Context, assetDir string, timeout time.Duration
 	return nil
 }
 
-func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
+func (a *CfApplication) Start(ctx context.Context, cli cli.CFClient, timeout time.Duration) error {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -88,14 +87,11 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 	logger = logger.Session("start", lager.Data{"app": a.appName})
 	logger.Info("started")
 
-	ctx, _ = context.WithTimeout(ctx, timeout)
-
-	_, err := cf(ctx, "start", a.appName)
+	_, err := cli.Cf(ctx, timeout, "start", a.appName)
 	if err != nil {
 		logger.Error("failed-to-start", err)
 		return err
 	}
-
 	response, err := a.curl(ctx)
 	if err != nil {
 		logger.Error("failed-curling-app", err)
@@ -106,7 +102,7 @@ func (a *cfApp) Start(ctx context.Context, timeout time.Duration) error {
 	return nil
 }
 
-func (a *cfApp) Guid(ctx context.Context, timeout time.Duration) (string, error) {
+func (a *CfApplication) Guid(ctx context.Context, cli cli.CFClient, timeout time.Duration) (string, error) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -115,8 +111,7 @@ func (a *cfApp) Guid(ctx context.Context, timeout time.Duration) (string, error)
 	logger.Info("started")
 	defer logger.Info("completed")
 
-	ctx, _ = context.WithTimeout(ctx, timeout)
-	output, err := cf(ctx, "app", "--guid", a.appName)
+	output, err := cli.Cf(ctx, timeout, "app", "--guid", a.appName)
 
 	if err != nil {
 		logger.Error("failed-to-get-guid", err)
@@ -125,11 +120,21 @@ func (a *cfApp) Guid(ctx context.Context, timeout time.Duration) (string, error)
 	return strings.Trim(string(output), "\n"), nil
 }
 
-func (a *cfApp) curl(ctx context.Context) (string, error) {
+func (a *CfApplication) SetUrl(appUrl string) error {
+	appRoute, err := url.Parse(appUrl)
+	if err != nil {
+		return err
+	}
+	a.appRoute = *appRoute
+	return nil
+}
+
+func (a *CfApplication) curl(ctx context.Context) (string, error) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
+
 	logger = logger.Session("curl", lager.Data{"app": a.appName})
 	logger.Info("started")
 	defer logger.Info("completed")
@@ -172,7 +177,7 @@ func (a *cfApp) curl(ctx context.Context) (string, error) {
 	}
 }
 
-func (a cfApp) shouldRetryRequest(statusCode int) bool {
+func (a CfApplication) shouldRetryRequest(statusCode int) bool {
 	if statusCode == 503 || statusCode == 404 {
 		return a.failedCurls < a.maxFailedCurls
 	}

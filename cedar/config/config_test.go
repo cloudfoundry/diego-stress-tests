@@ -1,9 +1,9 @@
-package main_test
+package config_test
 
 import (
 	"time"
 
-	. "code.cloudfoundry.org/diego-stress-tests/cedar"
+	. "code.cloudfoundry.org/diego-stress-tests/cedar/config"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
