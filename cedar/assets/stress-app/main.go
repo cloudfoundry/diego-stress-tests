@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	requestRate, err := strconv.ParseFloat(os.Getenv("REQUEST_PER_SECOND"), 64)
+	requestRate, err := strconv.ParseFloat(os.Getenv("REQUESTS_PER_SECOND"), 64)
 	if err != nil {
 		log.Fatal(err)
 	}
