@@ -1,0 +1,27 @@
+[
+  {
+    "manifestPath": "assets/manifests/manifest-light-group-baseline.yml",
+    "appCount": 1,
+    "appNamePrefix": "light-group"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-light-baseline.yml",
+    "appCount": 9,
+    "appNamePrefix": "light"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-medium-group-baseline.yml",
+    "appCount": 2,
+    "appNamePrefix": "medium-group"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-medium-baseline.yml",
+    "appCount": 7,
+    "appNamePrefix": "medium"
+  },
+  {
+    "manifestPath": "assets/manifests/manifest-heavy-baseline.yml",
+    "appCount": 1,
+    "appNamePrefix": "heavy"
+  },
+]

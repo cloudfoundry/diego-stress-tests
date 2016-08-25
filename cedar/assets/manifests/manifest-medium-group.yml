@@ -1,6 +1,5 @@
 ---
 applications:
-
 - instances: 3
   buildpack: binary_buildpack
   command: ./stress-app
