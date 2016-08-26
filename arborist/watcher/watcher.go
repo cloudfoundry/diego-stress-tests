@@ -23,11 +23,11 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 	logger = logger.Session("watcher")
 	results := map[string]Result{}
 
-	curlApps(logger, results, applications)
-
 	durationTimer := clock.NewTimer(duration)
 	intervalTicker := clock.NewTicker(interval)
 
+	// initial curling, so we don't have to wait for the intervalTicker to tick
+	curlApps(logger, results, applications, interval/2)
 	for {
 		select {
 		case <-durationTimer.C():
@@ -36,7 +36,7 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 			return results, nil
 		case <-intervalTicker.C():
 			logger.Info("initiating-interval-curl")
-			curlApps(logger, results, applications)
+			curlApps(logger, results, applications, interval/2)
 		}
 	}
 
@@ -44,7 +44,7 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 	return nil, nil
 }
 
-func curlApps(logger lager.Logger, results map[string]Result, applications []*parser.App) {
+func curlApps(logger lager.Logger, results map[string]Result, applications []*parser.App, timeout time.Duration) {
 	for _, app := range applications {
 		result, ok := results[app.Guid]
 		if !ok {
@@ -55,7 +55,7 @@ func curlApps(logger lager.Logger, results map[string]Result, applications []*pa
 		}
 
 		result.TotalRequests++
-		err := curlApp(logger, app)
+		err := curlApp(logger, app, timeout)
 		if err != nil {
 			result.FailedRequests++
 		} else {
@@ -66,12 +66,13 @@ func curlApps(logger lager.Logger, results map[string]Result, applications []*pa
 	}
 }
 
-func curlApp(logger lager.Logger, app *parser.App) error {
+func curlApp(logger lager.Logger, app *parser.App, timeout time.Duration) error {
 	logger = logger.Session("curl", lager.Data{"url": app.Url, "app-guid": app.Guid})
 	logger.Debug("started")
 	defer logger.Debug("finished")
 
-	resp, err := http.Get(app.Url)
+	client := http.Client{Timeout: timeout}
+	resp, err := client.Get(app.Url)
 	if err != nil {
 		logger.Error("failed-to-perform-get", err)
 		return err
