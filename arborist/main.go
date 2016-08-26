@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/clock"
@@ -15,8 +16,8 @@ import (
 )
 
 var (
-	requestInterval = flag.Int("request-interval", 60, "interval in seconds at which to make requests to each individual app")
-	duration        = flag.Int("duration", 600, "total duration to check routability of applications")
+	requestInterval = flag.Duration("request-interval", 1*time.Minute, "interval in seconds at which to make requests to each individual app")
+	duration        = flag.Duration("duration", 10*time.Minute, "total duration to check routability of applications")
 	appFile         = flag.String("app-file", "", "path to json application file")
 	resultFile      = flag.String("result-file", "output.json", "path to result file")
 	domain          = flag.String("domain", "bosh-lite.com", "domain where the applications are deployed")

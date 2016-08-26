@@ -19,14 +19,14 @@ type Result struct {
 	FailedRequests     int
 }
 
-func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*parser.App, duration, interval int) (map[string]Result, error) {
+func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*parser.App, duration, interval time.Duration) (map[string]Result, error) {
 	logger = logger.Session("watcher")
 	results := map[string]Result{}
 
 	curlApps(logger, results, applications)
 
-	durationTimer := clock.NewTimer(time.Duration(duration) * time.Second)
-	intervalTicker := clock.NewTicker(time.Duration(interval) * time.Second)
+	durationTimer := clock.NewTimer(duration)
+	intervalTicker := clock.NewTicker(interval)
 
 	for {
 		select {
