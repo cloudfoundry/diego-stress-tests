@@ -1,6 +1,6 @@
 ---
 applications:
-- instances: 3
+- instances: 2
   buildpack: binary_buildpack
   command: ./stress-app
   memory: 128M

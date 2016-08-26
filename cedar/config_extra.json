@@ -23,5 +23,5 @@
     "manifestPath": "assets/manifests/manifest-heavy-extra.yml",
     "appCount": 1,
     "appNamePrefix": "heavy"
-  },
+  }
 ]
