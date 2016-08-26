@@ -55,22 +55,24 @@ func NewDeployer(config config.Config, apps []CfApp, cli cli.CFClient) Deployer 
 	return p
 }
 
-func (p *Deployer) PushApps(ctx context.Context, cancel context.CancelFunc) {
-	logger, ok := ctx.Value("logger").(lager.Logger)
-	if !ok {
-		logger, _ = cflager.New("cedar")
-	}
+func (p *Deployer) PushApps(logger lager.Logger, ctx context.Context, cancel context.CancelFunc) {
 	logger = logger.Session("pushing-apps", lager.Data{"max-allowed-failures": p.config.MaxAllowedFailures()})
 	logger.Info("started")
 	defer logger.Info("complete")
 
-	var seedMutex sync.Mutex
-
+	stateMutex := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	rateLimiter := make(chan struct{}, p.config.MaxInFlight)
 
-	for i := 0; i < len(p.AppsToPush); i++ {
-		seedApp := p.AppsToPush[i]
+	app := p.AppsToPush[0]
+	err := p.pushApp(logger, ctx, app, stateMutex)
+	if err != nil {
+		logger.Error("failed-to-push-initial-app", err)
+		return
+	}
+
+	for _, app := range p.AppsToPush[1:] {
+		app := app
 		wg.Add(1)
 		go func() {
 			rateLimiter <- struct{}{}
@@ -79,59 +81,58 @@ func (p *Deployer) PushApps(ctx context.Context, cancel context.CancelFunc) {
 				wg.Done()
 			}()
 
-			var err error
-			var succeeded bool
-			var startTime, endTime time.Time
-			var guid *string
-
 			select {
 			case <-ctx.Done():
-				logger.Info("push-cancelled-before-pushing-app", lager.Data{"AppName": seedApp.AppName()})
+				logger.Info("push-cancelled", lager.Data{"app-name": app.AppName()})
 				return
 			default:
-				succeeded = true
-				startTime = time.Now()
-				err = seedApp.Push(ctx, p.client, p.config.AppPayload, p.config.TimeoutDuration())
-				endTime = time.Now()
 			}
 
+			err := p.pushApp(logger, ctx, app, stateMutex)
 			if err != nil {
-				logger.Error("failed-pushing-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1, "AppName": seedApp.AppName()})
-				succeeded = false
+				logger.Error("failed-pushing-app", err)
 				select {
 				case p.errChan <- err:
 				default:
-					logger.Error("failure-tolerance-reached", nil)
+					logger.Error("exceeded-failure-tolerance", nil)
 					cancel()
 				}
-			} else {
-				appGuid, err := seedApp.Guid(ctx, p.client, p.config.TimeoutDuration())
-				if err != nil {
-					logger.Error("failed-getting-app-guid", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
-					guid = nil
-				} else {
-					guid = &appGuid
-				}
-
-				seedMutex.Lock()
-				logger.Info("pushed-app-and-retrieved-guid", lager.Data{"AppName": seedApp.AppName()})
-				p.AppsToStart = append(p.AppsToStart, seedApp)
-				seedMutex.Unlock()
 			}
-
-			name := seedApp.AppName()
-			p.AppStates[name] = &AppStateMetrics{
-				AppName:    &name,
-				AppGuid:    guid,
-				PushState:  &State{},
-				StartState: &State{},
-			}
-			p.updateReport(Push, name, succeeded, startTime, endTime)
 		}()
 	}
 	wg.Wait()
 
-	logger.Info("done-pushing-apps", lager.Data{"seed-apps": len(p.AppsToStart)})
+	logger.Info("done-pushing-apps", lager.Data{"apps-to-start": len(p.AppsToStart)})
+}
+
+func (p *Deployer) pushApp(logger lager.Logger, ctx context.Context, app CfApp, stateMutex sync.Mutex) error {
+	startTime := time.Now()
+	pushErr := app.Push(ctx, p.client, p.config.AppPayload, p.config.TimeoutDuration())
+	endTime := time.Now()
+	succeeded := pushErr == nil
+
+	name := app.AppName()
+	guid, err := app.Guid(ctx, p.client, p.config.TimeoutDuration())
+	if err != nil {
+		logger.Error("failed-getting-app-guid", err)
+	}
+
+	stateMutex.Lock()
+	defer stateMutex.Unlock()
+
+	if succeeded {
+		p.AppsToStart = append(p.AppsToStart, app)
+	}
+
+	p.AppStates[name] = &AppStateMetrics{
+		AppName:    &name,
+		AppGuid:    &guid,
+		PushState:  &State{},
+		StartState: &State{},
+	}
+	p.updateReport(Push, name, succeeded, startTime, endTime)
+
+	return pushErr
 }
 
 func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {

@@ -63,7 +63,7 @@ func main() {
 	defer cfClient.Cleanup(ctx)
 
 	deployer := seeder.NewDeployer(config, apps, cfClient)
-	deployer.PushApps(ctx, cancel)
+	deployer.PushApps(logger, ctx, cancel)
 	deployer.StartApps(ctx, cancel)
 	deployer.GenerateReport(ctx, cancel)
 }
