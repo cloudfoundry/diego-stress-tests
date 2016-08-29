@@ -14,6 +14,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+//go:generate counterfeiter -o fakes/fake_client.go . CFClient
 type CFClient interface {
 	Cf(ctx context.Context, timeout time.Duration, args ...string) ([]byte, error)
 	Cleanup(ctx context.Context) error

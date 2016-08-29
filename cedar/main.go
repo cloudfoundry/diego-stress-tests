@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"golang.org/x/net/context"
 
@@ -12,7 +13,7 @@ import (
 )
 
 var (
-	domain = flag.String("domain", "bosh-lite.com", "app domain")
+	domain = flag.String("domain", "", "app domain")
 
 	numBatches       = flag.Int("n", 1, "number of batches to seed")
 	maxInFlight      = flag.Int("k", 1, "max number of cf operations in flight")
@@ -61,6 +62,15 @@ func main() {
 
 	cfClient := cli.NewCfClient(ctx, *maxInFlight)
 	defer cfClient.Cleanup(ctx)
+
+	if config.Domain == "" {
+		var err error
+		config.Domain, err = cli.GetDefaultSharedDomain(ctx, cfClient)
+		if err != nil {
+			logger.Error("cannot determine shared domain", err)
+			os.Exit(1)
+		}
+	}
 
 	deployer := seeder.NewDeployer(config, apps, cfClient)
 	deployer.PushApps(logger, ctx, cancel)
