@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
-	"code.cloudfoundry.org/diego-stress-tests/cedar/cli/clifakes"
+	. "code.cloudfoundry.org/diego-stress-tests/cedar/cli/fakes"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
-	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder/seederfakes"
+	. "code.cloudfoundry.org/diego-stress-tests/cedar/seeder/fakes"
 	"golang.org/x/net/context"
 
 	. "github.com/onsi/ginkgo"
@@ -50,7 +50,7 @@ var _ = Describe("Deployer", func() {
 		appNames = make([]string, fakeCounts.total)
 
 		for i := 0; i < fakeCounts.failingPush; i++ {
-			fakeApp := seederfakes.FakeCfApp{}
+			fakeApp := FakeCfApp{}
 			name := fmt.Sprintf("fake-push-failing-app-%d", i)
 			fakeApp.AppNameReturns(name)
 			fakeApp.PushReturns(fmt.Errorf("failed-to-push"))
@@ -59,7 +59,7 @@ var _ = Describe("Deployer", func() {
 		}
 
 		for i := fakeCounts.failingPush; i < (fakeCounts.failingPush + fakeCounts.failingStart); i++ {
-			fakeApp := seederfakes.FakeCfApp{}
+			fakeApp := FakeCfApp{}
 			name := fmt.Sprintf("fake-start-failing-app-%d", i)
 			fakeApp.AppNameReturns(name)
 			fakeApp.GuidReturns(fmt.Sprintf("fake-guid-%d", i), nil)
@@ -69,7 +69,7 @@ var _ = Describe("Deployer", func() {
 		}
 
 		for i := (fakeCounts.failingPush + fakeCounts.failingStart); i < fakeCounts.total; i++ {
-			fakeApp := seederfakes.FakeCfApp{}
+			fakeApp := FakeCfApp{}
 			name := fmt.Sprintf("fake-app-%d", i)
 			fakeApp.AppNameReturns(name)
 			fakeApp.GuidReturns(fmt.Sprintf("fake-guid-%d", i), nil)
@@ -102,7 +102,7 @@ var _ = Describe("Deployer", func() {
 
 		toleranceNumApps = int(totalApps * cfg.Tolerance)
 
-		fakeCli = &clifakes.FakeCFClient{}
+		fakeCli = &FakeCFClient{}
 
 		ctx, cancel = context.WithCancel(
 			context.WithValue(context.Background(),

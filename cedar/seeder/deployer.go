@@ -107,12 +107,12 @@ func (p *Deployer) PushApps(logger lager.Logger, ctx context.Context, cancel con
 
 func (p *Deployer) pushApp(logger lager.Logger, ctx context.Context, app CfApp, stateMutex sync.Mutex) error {
 	startTime := time.Now()
-	pushErr := app.Push(ctx, p.client, p.config.AppPayload, p.config.TimeoutDuration())
+	pushErr := app.Push(logger, ctx, p.client, p.config.AppPayload, p.config.TimeoutDuration())
 	endTime := time.Now()
 	succeeded := pushErr == nil
 
 	name := app.AppName()
-	guid, err := app.Guid(ctx, p.client, p.config.TimeoutDuration())
+	guid, err := app.Guid(logger, ctx, p.client, p.config.TimeoutDuration())
 	if err != nil {
 		logger.Error("failed-getting-app-guid", err)
 	}
@@ -169,7 +169,7 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 			default:
 				succeeded = true
 				startTime = time.Now()
-				err = appToStart.Start(ctx, p.client, p.config.TimeoutDuration())
+				err = appToStart.Start(logger, ctx, p.client, p.config.TimeoutDuration())
 				endTime = time.Now()
 				logger.Info("started-app", lager.Data{"AppName": appToStart.AppName()})
 			}

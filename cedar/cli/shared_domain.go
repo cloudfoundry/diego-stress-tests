@@ -22,12 +22,10 @@ type SharedDomainResponse struct {
 	} `json:"resources"`
 }
 
-func GetDefaultSharedDomain(ctx context.Context, cfClient CFClient) (string, error) {
-	logger := ctx.Value("logger").(lager.Logger)
+func GetDefaultSharedDomain(logger lager.Logger, cfClient CFClient) (string, error) {
 	logger = logger.Session("get-default-shared-domain")
-
 	// cf curl to get shared domains
-	out, err := cfClient.Cf(ctx, 30*time.Second, "curl", "/v2/shared_domains")
+	out, err := cfClient.Cf(logger, context.Background(), 30*time.Second, "curl", "/v2/shared_domains")
 	if err != nil {
 		return "", err
 	}

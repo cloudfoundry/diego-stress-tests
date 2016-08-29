@@ -65,7 +65,7 @@ func main() {
 
 	if config.Domain == "" {
 		var err error
-		config.Domain, err = cli.GetDefaultSharedDomain(ctx, cfClient)
+		config.Domain, err = cli.GetDefaultSharedDomain(logger, cfClient)
 		if err != nil {
 			logger.Error("cannot determine shared domain", err)
 			os.Exit(1)

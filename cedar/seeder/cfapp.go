@@ -19,11 +19,12 @@ const (
 	AppRoutePattern = "http://%s.%s"
 )
 
+//go:generate counterfeiter -o fakes/fake_cfapp.go . CfApp
 type CfApp interface {
 	AppName() string
-	Push(ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
-	Start(ctx context.Context, client cli.CFClient, timeout time.Duration) error
-	Guid(ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error)
+	Push(logger lager.Logger, ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
+	Start(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) error
+	Guid(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error)
 }
 
 type CfApplication struct {
@@ -55,21 +56,17 @@ func (a *CfApplication) AppName() string {
 	return a.appName
 }
 
-func (a *CfApplication) Push(ctx context.Context, cli cli.CFClient, assetDir string, timeout time.Duration) error {
-	logger, ok := ctx.Value("logger").(lager.Logger)
-	if !ok {
-		logger, _ = cflager.New("cedar")
-	}
+func (a *CfApplication) Push(logger lager.Logger, ctx context.Context, cli cli.CFClient, assetDir string, timeout time.Duration) error {
 	logger = logger.Session("push", lager.Data{"app": a.appName})
 	logger.Info("started")
 
-	_, err := cli.Cf(ctx, timeout, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
+	_, err := cli.Cf(logger, ctx, timeout, "push", a.appName, "-p", assetDir, "-f", a.manifestPath, "--no-start")
 	if err != nil {
 		logger.Error("failed-to-push", err)
 		return err
 	}
 	endpointToHit := fmt.Sprintf(AppRoutePattern, a.appName, a.domain)
-	_, err = cli.Cf(ctx, timeout, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
+	_, err = cli.Cf(logger, ctx, timeout, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
 	if err != nil {
 		logger.Error("failed-to-set-env", err)
 		return err
@@ -79,15 +76,11 @@ func (a *CfApplication) Push(ctx context.Context, cli cli.CFClient, assetDir str
 	return nil
 }
 
-func (a *CfApplication) Start(ctx context.Context, cli cli.CFClient, timeout time.Duration) error {
-	logger, ok := ctx.Value("logger").(lager.Logger)
-	if !ok {
-		logger, _ = cflager.New("cedar")
-	}
+func (a *CfApplication) Start(logger lager.Logger, ctx context.Context, cli cli.CFClient, timeout time.Duration) error {
 	logger = logger.Session("start", lager.Data{"app": a.appName})
 	logger.Info("started")
 
-	_, err := cli.Cf(ctx, timeout, "start", a.appName)
+	_, err := cli.Cf(logger, ctx, timeout, "start", a.appName)
 	if err != nil {
 		logger.Error("failed-to-start", err)
 		return err
@@ -102,16 +95,12 @@ func (a *CfApplication) Start(ctx context.Context, cli cli.CFClient, timeout tim
 	return nil
 }
 
-func (a *CfApplication) Guid(ctx context.Context, cli cli.CFClient, timeout time.Duration) (string, error) {
-	logger, ok := ctx.Value("logger").(lager.Logger)
-	if !ok {
-		logger, _ = cflager.New("cedar")
-	}
+func (a *CfApplication) Guid(logger lager.Logger, ctx context.Context, cli cli.CFClient, timeout time.Duration) (string, error) {
 	logger = logger.Session("guid", lager.Data{"app": a.appName})
 	logger.Info("started")
 	defer logger.Info("completed")
 
-	output, err := cli.Cf(ctx, timeout, "app", "--guid", a.appName)
+	output, err := cli.Cf(logger, ctx, timeout, "app", "--guid", a.appName)
 
 	if err != nil {
 		logger.Error("failed-to-get-guid", err)

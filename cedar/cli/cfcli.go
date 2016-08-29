@@ -14,9 +14,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-//go:generate counterfeiter -o fakes/fake_client.go . CFClient
+//go:generate counterfeiter -o fakes/fake_cfclient.go . CFClient
 type CFClient interface {
-	Cf(ctx context.Context, timeout time.Duration, args ...string) ([]byte, error)
+	Cf(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error)
 	Cleanup(ctx context.Context) error
 	Pool() chan string
 }
@@ -33,7 +33,6 @@ func NewCfClient(ctx context.Context, poolSize int) CFClient {
 		logger, _ = cflager.New("cedar")
 	}
 	logger = logger.Session("cf")
-
 	user, err := user.Current()
 	if err != nil {
 		logger.Error("get-home-dir-failed", err)
@@ -71,11 +70,7 @@ func (cfcli *CFPooledClient) Pool() chan string {
 	return cfcli.pool
 }
 
-func (cfcli *CFPooledClient) Cf(ctx context.Context, timeout time.Duration, args ...string) ([]byte, error) {
-	logger, ok := ctx.Value("logger").(lager.Logger)
-	if !ok {
-		logger, _ = cflager.New("cedar")
-	}
+func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error) {
 	logger = logger.Session("cf", lager.Data{"args": args})
 
 	ctx, _ = context.WithTimeout(ctx, timeout)

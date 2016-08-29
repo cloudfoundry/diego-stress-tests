@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"code.cloudfoundry.org/diego-stress-tests/cedar/cli/clifakes"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/cli/fakes"
 	. "code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
 	"golang.org/x/net/context"
 
@@ -21,7 +21,7 @@ const (
 
 var _ = Describe("Cfapp", func() {
 	var cfApp CfApp
-	var fakeClient clifakes.FakeCFClient
+	var fakeClient fakes.FakeCFClient
 	var ctx context.Context
 	var err error
 	var server *httptest.Server
@@ -38,7 +38,7 @@ var _ = Describe("Cfapp", func() {
 			fmt.Fprintln(w, ``)
 		}))
 
-		fakeClient = clifakes.FakeCFClient{}
+		fakeClient = fakes.FakeCFClient{}
 
 		cfApp, err = NewCfApp("test-app", "random-123-domain.com", 1, "test-manifest.yml")
 		(cfApp.(*CfApplication)).SetUrl(server.URL)
@@ -56,7 +56,7 @@ var _ = Describe("Cfapp", func() {
 		})
 
 		It("should push successfully", func() {
-			err = cfApp.Push(ctx, &fakeClient, "random-dir", timeout)
+			err = cfApp.Push(fakeLogger, ctx, &fakeClient, "random-dir", timeout)
 			Expect(fakeLogger).To(gbytes.Say("push.started"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeLogger).To(gbytes.Say("push.completed"))
@@ -69,7 +69,7 @@ var _ = Describe("Cfapp", func() {
 		})
 
 		It("should start successfully", func() {
-			err = cfApp.Start(ctx, &fakeClient, timeout)
+			err = cfApp.Start(fakeLogger, ctx, &fakeClient, timeout)
 			Expect(fakeLogger).To(gbytes.Say("start.started"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeLogger).To(gbytes.Say("start.completed"))
@@ -82,7 +82,7 @@ var _ = Describe("Cfapp", func() {
 		})
 
 		It("should push successfully", func() {
-			guid, err := cfApp.Guid(ctx, &fakeClient, timeout)
+			guid, err := cfApp.Guid(fakeLogger, ctx, &fakeClient, timeout)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(guid).To(Equal("fake-guid"))
 			Expect(fakeLogger).To(gbytes.Say("guid.started"))

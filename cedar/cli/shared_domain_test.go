@@ -59,7 +59,7 @@ var _ = Describe("SharedDomain", func() {
 		})
 
 		It("parses the output of cf curl properly", func() {
-			domain, err := cli.GetDefaultSharedDomain(ctx, cfCli)
+			domain, err := cli.GetDefaultSharedDomain(testLogger, cfCli)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(domain).To(Equal("shared-domain.com"))
 		})
@@ -80,7 +80,7 @@ var _ = Describe("SharedDomain", func() {
 		})
 
 		It("returns an error to the caller", func() {
-			_, err := cli.GetDefaultSharedDomain(ctx, cfCli)
+			_, err := cli.GetDefaultSharedDomain(testLogger, cfCli)
 			Expect(err).To(MatchError(cli.ErrNoDomains))
 		})
 	})
@@ -91,7 +91,7 @@ var _ = Describe("SharedDomain", func() {
 		})
 
 		It("returns the error to the caller", func() {
-			_, err := cli.GetDefaultSharedDomain(ctx, cfCli)
+			_, err := cli.GetDefaultSharedDomain(testLogger, cfCli)
 			Expect(err).To(MatchError(returnedErr))
 		})
 	})
@@ -102,7 +102,7 @@ var _ = Describe("SharedDomain", func() {
 		})
 
 		It("returns the error to the caller", func() {
-			_, err := cli.GetDefaultSharedDomain(ctx, cfCli)
+			_, err := cli.GetDefaultSharedDomain(testLogger, cfCli)
 			Expect(err).To(MatchError(ContainSubstring("JSON")))
 		})
 	})

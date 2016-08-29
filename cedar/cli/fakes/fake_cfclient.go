@@ -6,13 +6,15 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
+	"code.cloudfoundry.org/lager"
 	"golang.org/x/net/context"
 )
 
 type FakeCFClient struct {
-	CfStub        func(ctx context.Context, timeout time.Duration, args ...string) ([]byte, error)
+	CfStub        func(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error)
 	cfMutex       sync.RWMutex
 	cfArgsForCall []struct {
+		logger  lager.Logger
 		ctx     context.Context
 		timeout time.Duration
 		args    []string
@@ -39,17 +41,18 @@ type FakeCFClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeCFClient) Cf(ctx context.Context, timeout time.Duration, args ...string) ([]byte, error) {
+func (fake *FakeCFClient) Cf(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error) {
 	fake.cfMutex.Lock()
 	fake.cfArgsForCall = append(fake.cfArgsForCall, struct {
+		logger  lager.Logger
 		ctx     context.Context
 		timeout time.Duration
 		args    []string
-	}{ctx, timeout, args})
-	fake.recordInvocation("Cf", []interface{}{ctx, timeout, args})
+	}{logger, ctx, timeout, args})
+	fake.recordInvocation("Cf", []interface{}{logger, ctx, timeout, args})
 	fake.cfMutex.Unlock()
 	if fake.CfStub != nil {
-		return fake.CfStub(ctx, timeout, args...)
+		return fake.CfStub(logger, ctx, timeout, args...)
 	} else {
 		return fake.cfReturns.result1, fake.cfReturns.result2
 	}
@@ -61,10 +64,10 @@ func (fake *FakeCFClient) CfCallCount() int {
 	return len(fake.cfArgsForCall)
 }
 
-func (fake *FakeCFClient) CfArgsForCall(i int) (context.Context, time.Duration, []string) {
+func (fake *FakeCFClient) CfArgsForCall(i int) (lager.Logger, context.Context, time.Duration, []string) {
 	fake.cfMutex.RLock()
 	defer fake.cfMutex.RUnlock()
-	return fake.cfArgsForCall[i].ctx, fake.cfArgsForCall[i].timeout, fake.cfArgsForCall[i].args
+	return fake.cfArgsForCall[i].logger, fake.cfArgsForCall[i].ctx, fake.cfArgsForCall[i].timeout, fake.cfArgsForCall[i].args
 }
 
 func (fake *FakeCFClient) CfReturns(result1 []byte, result2 error) {
