@@ -24,6 +24,8 @@ type SharedDomainResponse struct {
 
 func GetDefaultSharedDomain(logger lager.Logger, cfClient CFClient) (string, error) {
 	logger = logger.Session("get-default-shared-domain")
+	logger.Info("starting")
+	defer logger.Info("finished")
 	// cf curl to get shared domains
 	out, err := cfClient.Cf(logger, context.Background(), 30*time.Second, "curl", "/v2/shared_domains")
 	if err != nil {

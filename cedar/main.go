@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
+	"code.cloudfoundry.org/lager"
 )
 
 var (
@@ -71,6 +72,8 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	logger.Info("domain-used-for-pushing", lager.Data{"domain": config.Domain})
 
 	deployer := seeder.NewDeployer(config, apps, cfClient)
 	deployer.PushApps(logger, ctx, cancel)
