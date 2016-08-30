@@ -62,7 +62,7 @@ func (p *Deployer) PushApps(logger lager.Logger, ctx context.Context, cancel con
 
 	stateMutex := sync.Mutex{}
 	wg := sync.WaitGroup{}
-	rateLimiter := make(chan struct{}, p.config.MaxInFlight)
+	rateLimiter := make(chan struct{}, p.config.MaxInFlight())
 
 	app := p.AppsToPush[0]
 	err := p.pushApp(logger, ctx, app, stateMutex)
@@ -107,12 +107,12 @@ func (p *Deployer) PushApps(logger lager.Logger, ctx context.Context, cancel con
 
 func (p *Deployer) pushApp(logger lager.Logger, ctx context.Context, app CfApp, stateMutex sync.Mutex) error {
 	startTime := time.Now()
-	pushErr := app.Push(logger, ctx, p.client, p.config.AppPayload, p.config.TimeoutDuration())
+	pushErr := app.Push(logger, ctx, p.client, p.config.AppPayload(), p.config.Timeout())
 	endTime := time.Now()
 	succeeded := pushErr == nil
 
 	name := app.AppName()
-	guid, err := app.Guid(logger, ctx, p.client, p.config.TimeoutDuration())
+	guid, err := app.Guid(logger, ctx, p.client, p.config.Timeout())
 	if err != nil {
 		logger.Error("failed-getting-app-guid", err)
 	}
@@ -145,7 +145,7 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 	defer logger.Info("completed")
 
 	wg := sync.WaitGroup{}
-	rateLimiter := make(chan struct{}, p.config.MaxInFlight)
+	rateLimiter := make(chan struct{}, p.config.MaxInFlight())
 
 	for i := 0; i < len(p.AppsToStart); i++ {
 		appToStart := p.AppsToStart[i]
@@ -169,7 +169,7 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 			default:
 				succeeded = true
 				startTime = time.Now()
-				err = appToStart.Start(logger, ctx, p.client, p.config.TimeoutDuration())
+				err = appToStart.Start(logger, ctx, p.client, p.config.Timeout())
 				endTime = time.Now()
 				logger.Info("started-app", lager.Data{"AppName": appToStart.AppName()})
 			}
@@ -215,7 +215,7 @@ func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc
 		[]AppStateMetrics{},
 	}
 
-	metricsFile, err := os.OpenFile(p.config.OutputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	metricsFile, err := os.OpenFile(p.config.OutputFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	defer metricsFile.Close()
 
 	if err != nil {

@@ -6,10 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
 	. "code.cloudfoundry.org/diego-stress-tests/cedar/cli/fakes"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/config"
+	"code.cloudfoundry.org/diego-stress-tests/cedar/config/fakes"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/seeder"
 	. "code.cloudfoundry.org/diego-stress-tests/cedar/seeder/fakes"
 	"golang.org/x/net/context"
@@ -33,7 +35,7 @@ const (
 
 var _ = Describe("Deployer", func() {
 	var (
-		cfg              config.Config
+		cfg              *fakes.FakeConfig
 		deployer         seeder.Deployer
 		ctx              context.Context
 		cancel           context.CancelFunc
@@ -86,21 +88,26 @@ var _ = Describe("Deployer", func() {
 	}
 
 	BeforeEach(func() {
-		cfg = config.Config{
-			NumBatches:       1,
-			MaxInFlight:      1,
-			MaxPollingErrors: 1,
-			Tolerance:        0.5,
-			Domain:           "fake-domain.com",
-			AppPayload:       "assets/fake-folder",
-			Prefix:           "cedarapp",
-			ConfigFile:       fakeConfigFile,
-			OutputFile:       "tmp/dummy-file.json",
-			Timeout:          30,
-		}
-		cfg.Init(fakeLogger)
+		cfg = &fakes.FakeConfig{}
+		cfg.MaxAllowedFailuresReturns(6)
+		cfg.MaxInFlightReturns(1)
+		cfg.AppPayloadReturns("assets/fake-folder")
+		cfg.TimeoutReturns(30 * time.Second)
+		cfg.OutputFileReturns("/tmp/dummy-file.json")
+		cfg.AppTypesReturns([]config.AppDefinition{
+			{
+				ManifestPath:  "manifest-light.yml",
+				AppNamePrefix: "light",
+				AppCount:      9,
+			},
+			{
+				ManifestPath:  "manifest-medium-group.yml",
+				AppNamePrefix: "medium-group",
+				AppCount:      3,
+			},
+		})
 
-		toleranceNumApps = int(totalApps * cfg.Tolerance)
+		toleranceNumApps = int(totalApps * 0.5)
 
 		fakeCli = &FakeCFClient{}
 
@@ -346,7 +353,7 @@ var _ = Describe("Deployer", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				tmpFileName = filepath.Join(dir, "tmpfile")
-				cfg.OutputFile = tmpFileName
+				cfg.OutputFileReturns(tmpFileName)
 
 				_, apps = generateFakeApps(FakeCounts{total: totalApps, failingPush: failedPushApps, failingStart: 0})
 				deployer = seeder.NewDeployer(cfg, apps, fakeCli)
@@ -388,7 +395,7 @@ var _ = Describe("Deployer", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					tmpFileName = filepath.Join(dir, "tmpfile")
-					cfg.OutputFile = tmpFileName
+					cfg.OutputFileReturns(tmpFileName)
 
 					_, apps = generateFakeApps(FakeCounts{total: totalApps, failingPush: failedPushApps, failingStart: 0})
 					deployer = seeder.NewDeployer(cfg, apps, fakeCli)

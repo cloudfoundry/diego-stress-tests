@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -24,7 +25,7 @@ var (
 	outputFile       = flag.String("output", "output.json", "path to cedar metric results file")
 	appPayload       = flag.String("payload", "assets/temp-app", "directory containing the stress-app payload to push")
 	prefix           = flag.String("prefix", "cedarapp", "the naming prefix for cedar generated apps")
-	timeout          = flag.Int("timeout", 30, "time allowed for a push or start operation , in seconds")
+	timeout          = flag.Duration("timeout", 30*time.Second, "time allowed for a push or start operation, golang duration")
 )
 
 func main() {
@@ -36,21 +37,6 @@ func main() {
 	logger.Info("started")
 	defer logger.Info("exited")
 
-	config := config.Config{
-		NumBatches:       *numBatches,
-		MaxInFlight:      *maxInFlight,
-		MaxPollingErrors: *maxPollingErrors,
-		Tolerance:        *tolerance,
-		AppPayload:       *appPayload,
-		Prefix:           *prefix,
-		Domain:           *domain,
-		ConfigFile:       *configFile,
-		OutputFile:       *outputFile,
-		Timeout:          *timeout,
-	}
-
-	config.Init(logger)
-
 	ctx, cancel := context.WithCancel(
 		context.WithValue(
 			context.Background(),
@@ -58,25 +44,37 @@ func main() {
 			logger,
 		),
 	)
-
-	apps := seeder.NewAppGenerator(config).Apps(ctx)
-
 	cfClient := cli.NewCfClient(ctx, *maxInFlight)
 	defer cfClient.Cleanup(ctx)
 
-	if config.Domain == "" {
-		var err error
-		config.Domain, err = cli.GetDefaultSharedDomain(logger, cfClient)
-		if err != nil {
-			logger.Error("cannot determine shared domain", err)
-			os.Exit(1)
-		}
+	config, err := config.NewConfig(
+		logger,
+		cfClient,
+		*numBatches,
+		*maxInFlight,
+		*maxPollingErrors,
+		*tolerance,
+		*appPayload,
+		*prefix,
+		*domain,
+		*configFile,
+		*outputFile,
+		*timeout,
+	)
+
+	if err != nil {
+		logger.Error("failed-to-initialize", err)
+		os.Exit(1)
 	}
 
-	logger.Info("domain-used-for-pushing", lager.Data{"domain": config.Domain})
-
+	apps := generateApps(logger, config)
 	deployer := seeder.NewDeployer(config, apps, cfClient)
 	deployer.PushApps(logger, ctx, cancel)
 	deployer.StartApps(ctx, cancel)
 	deployer.GenerateReport(ctx, cancel)
+}
+
+func generateApps(logger lager.Logger, config config.Config) []seeder.CfApp {
+	appsGenerator := seeder.NewAppGenerator(config)
+	return appsGenerator.Apps(logger)
 }
