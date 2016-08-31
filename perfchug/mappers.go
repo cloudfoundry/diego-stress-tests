@@ -138,8 +138,8 @@ var LRPLifecycleMapper = &Mapper{
 var CedarSuccessfulPushMapper = &Mapper{
 	Name: "CedarSuccessfulPushMapper",
 
-	StartString: "cedar.push.started",
-	EndString:   "cedar.push.completed",
+	StartString: "cedar.pushing-apps.push.started",
+	EndString:   "cedar.pushing-apps.push.completed",
 
 	Transform: func(s, e chug.Entry) Metric {
 		component := strings.Split(e.Log.Message, ".")[0]
@@ -172,8 +172,8 @@ var CedarSuccessfulPushMapper = &Mapper{
 var CedarFailedPushMapper = &Mapper{
 	Name: "CedarFailedPushMapper",
 
-	StartString: "cedar.push.started",
-	EndString:   "cedar.push.failed",
+	StartString: "cedar.pushing-apps.push.started",
+	EndString:   "cedar.pushing-apps.push.failed",
 
 	Transform: func(s, e chug.Entry) Metric {
 		component := strings.Split(e.Log.Message, ".")[0]
@@ -205,8 +205,8 @@ var CedarFailedPushMapper = &Mapper{
 var CedarSuccessfulStartMapper = &Mapper{
 	Name: "CedarSuccessfulStartMapper",
 
-	StartString: "cedar.start.started",
-	EndString:   "cedar.start.completed",
+	StartString: "cedar.starting-apps.start.started",
+	EndString:   "cedar.starting-apps.start.completed",
 
 	Transform: func(s, e chug.Entry) Metric {
 		component := strings.Split(e.Log.Message, ".")[0]
@@ -238,8 +238,8 @@ var CedarSuccessfulStartMapper = &Mapper{
 var CedarFailedStartMapper = &Mapper{
 	Name: "CedarFailedStartMapper",
 
-	StartString: "cedar.start.started",
-	EndString:   "cedar.start.failed",
+	StartString: "cedar.starting-apps.start.started",
+	EndString:   "cedar.starting-apps.start.failed",
 
 	Transform: func(s, e chug.Entry) Metric {
 		component := strings.Split(e.Log.Message, ".")[0]
