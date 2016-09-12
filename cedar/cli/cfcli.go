@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/glycerine/rbuf"
+
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/lager"
 	"golang.org/x/net/context"
@@ -81,7 +83,7 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 
 	cmd := exec.Command("cf", args...)
 	c := make(chan error, 1)
-	var output []byte = nil
+	buf := rbuf.NewFixedSizeRingBuf(1024)
 
 	go func() {
 		stdout, err := cmd.StdoutPipe()
@@ -95,7 +97,7 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 			c <- err
 		}
 
-		output, err = ioutil.ReadAll(stdout)
+		_, err = buf.ReadFrom(stdout)
 		if err != nil {
 			logger.Error("failed-starting-cf-command", err)
 			c <- err
@@ -103,7 +105,7 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 
 		err = cmd.Wait()
 		if err != nil {
-			logger.Error("failed-running-cf-command", err)
+			logger.Error("failed-running-cf-command", err, lager.Data{"stdout": string(buf.Bytes())})
 			c <- err
 		}
 		c <- nil
@@ -116,7 +118,7 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 		if err != nil {
 			return nil, err
 		} else {
-			return output, nil
+			return buf.Bytes(), nil
 		}
 	}
 }
