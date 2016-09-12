@@ -1,10 +1,13 @@
 package cli_test
 
 import (
+	"time"
+
 	. "code.cloudfoundry.org/diego-stress-tests/cedar/cli"
 	"golang.org/x/net/context"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/gomega/gbytes"
 
 	. "github.com/onsi/gomega"
 )
@@ -51,6 +54,24 @@ var _ = Describe("Cli", func() {
 			Expect(cfDir1).To(ContainSubstring("cfhome"))
 			Expect(cfDir1).To(BeADirectory())
 			Expect(cfDir2).To(BeADirectory())
+		})
+	})
+
+	Context("When an error is returned by the cli", func() {
+		It("logs to show the error from cli when pushing without arguments", func() {
+			_, err := client.Cf(fakeLogger, ctx, 30*time.Second, "push")
+			Expect(fakeLogger).To(gbytes.Say("failed-running-cf-command"))
+			Expect(fakeLogger).To(gbytes.Say("\"log_level\":2"))
+			Expect(fakeLogger).To(gbytes.Say("FAILED"))
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("logs to show the error from cli when start without arguments", func() {
+			_, err := client.Cf(fakeLogger, ctx, 30*time.Second, "start")
+			Expect(fakeLogger).To(gbytes.Say("failed-running-cf-command"))
+			Expect(fakeLogger).To(gbytes.Say("\"log_level\":2"))
+			Expect(fakeLogger).To(gbytes.Say("FAILED"))
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
