@@ -60,14 +60,15 @@ func (p *Deployer) PushApps(logger lager.Logger, ctx context.Context, cancel con
 	logger.Info("started")
 	defer logger.Info("complete")
 
-	stateMutex := sync.Mutex{}
-	wg := sync.WaitGroup{}
+	stateMutex := &sync.Mutex{}
+	wg := &sync.WaitGroup{}
 	rateLimiter := make(chan struct{}, p.config.MaxInFlight())
 
 	app := p.AppsToPush[0]
 	err := p.pushApp(logger, ctx, app, stateMutex)
 	if err != nil {
 		logger.Error("failed-to-push-initial-app", err)
+		cancel()
 		return
 	}
 
@@ -105,7 +106,7 @@ func (p *Deployer) PushApps(logger lager.Logger, ctx context.Context, cancel con
 	logger.Info("done-pushing-apps", lager.Data{"apps-to-start": len(p.AppsToStart)})
 }
 
-func (p *Deployer) pushApp(logger lager.Logger, ctx context.Context, app CfApp, stateMutex sync.Mutex) error {
+func (p *Deployer) pushApp(logger lager.Logger, ctx context.Context, app CfApp, stateMutex *sync.Mutex) error {
 	startTime := time.Now()
 	pushErr := app.Push(logger, ctx, p.client, p.config.AppPayload(), p.config.Timeout())
 	endTime := time.Now()

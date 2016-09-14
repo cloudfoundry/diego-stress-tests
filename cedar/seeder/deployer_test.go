@@ -228,6 +228,7 @@ var _ = Describe("Deployer", func() {
 
 			It("cancels pushing", func() {
 				Expect(len(deployer.AppStates)).To(Equal(1))
+				Expect(ctx.Done()).To(BeClosed())
 			})
 
 			It("records the app state correctly", func() {
