@@ -44,8 +44,27 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 	return nil, nil
 }
 
+type curlResult struct {
+	app    *parser.App
+	passed bool
+}
+
 func curlApps(logger lager.Logger, results map[string]Result, applications []*parser.App, timeout time.Duration) {
+	resultsCh := make(chan curlResult)
+
 	for _, app := range applications {
+		go func(a *parser.App) {
+			err := curlApp(logger, a, timeout)
+			resultsCh <- curlResult{
+				app:    a,
+				passed: err == nil,
+			}
+		}(app)
+	}
+
+	for range applications {
+		curlResult := <-resultsCh
+		app := curlResult.app
 		result, ok := results[app.Guid]
 		if !ok {
 			result = Result{
@@ -55,11 +74,10 @@ func curlApps(logger lager.Logger, results map[string]Result, applications []*pa
 		}
 
 		result.TotalRequests++
-		err := curlApp(logger, app, timeout)
-		if err != nil {
-			result.FailedRequests++
-		} else {
+		if curlResult.passed {
 			result.SuccessfulRequests++
+		} else {
+			result.FailedRequests++
 		}
 
 		results[app.Guid] = result

@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -17,11 +18,11 @@ import (
 
 var _ = Describe("Watcher", func() {
 	var (
-		logger                      *lagertest.TestLogger
-		fakeClock                   *fakeclock.FakeClock
-		applications                []*parser.App
-		duration, interval, timeout time.Duration
-		server                      *ghttp.Server
+		logger             *lagertest.TestLogger
+		fakeClock          *fakeclock.FakeClock
+		applications       []*parser.App
+		duration, interval time.Duration
+		server             *ghttp.Server
 	)
 
 	BeforeEach(func() {
@@ -29,7 +30,6 @@ var _ = Describe("Watcher", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		duration = 5 * time.Second
 		interval = 2 * time.Second
-		timeout = 1 * time.Second
 		server = ghttp.NewServer()
 
 		applications = []*parser.App{
@@ -53,20 +53,27 @@ var _ = Describe("Watcher", func() {
 	})
 
 	Context("when the requests are handled successfully", func() {
+		var (
+			app1Requests = 0
+		)
+
 		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.VerifyRequest("GET", "/app-1"),
-				ghttp.VerifyRequest("GET", "/app-2"),
+			server.RouteToHandler("GET", "/app-3", func(resp http.ResponseWriter, req *http.Request) {
+				resp.WriteHeader(400)
+			})
 
-				ghttp.VerifyRequest("GET", "/app-1"),
-				ghttp.VerifyRequest("GET", "/app-2"),
+			server.RouteToHandler("GET", "/app-1", func(resp http.ResponseWriter, req *http.Request) {
+				app1Requests++
+				if app1Requests == 3 {
+					resp.WriteHeader(400)
+					return
+				}
+				resp.WriteHeader(http.StatusOK)
+			})
 
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/app-1"),
-					ghttp.RespondWith(400, nil, nil),
-				),
-				ghttp.VerifyRequest("GET", "/app-2"),
-			)
+			server.RouteToHandler("GET", "/app-2", func(resp http.ResponseWriter, req *http.Request) {
+				resp.WriteHeader(200)
+			})
 		})
 
 		It("should curl the applications every interval and exits after the duration", func() {
@@ -127,7 +134,7 @@ var _ = Describe("Watcher", func() {
 				},
 			}
 
-			server.RouteToHandler("GET", ".*", func(resp http.ResponseWriter, req *http.Request) {
+			server.RouteToHandler("GET", regexp.MustCompile(".*"), func(resp http.ResponseWriter, req *http.Request) {
 				time.Sleep(2 * time.Second)
 				resp.WriteHeader(http.StatusOK)
 			})
@@ -166,6 +173,50 @@ var _ = Describe("Watcher", func() {
 			fakeClock.WaitForWatcherAndIncrement(1 * time.Second)
 
 			Eventually(done, 2*time.Second).Should(BeClosed())
+		})
+	})
+
+	Context("curling applications", func() {
+		// this test makes sure watcher curl apps concurrently, by sleeping in the
+		// handler for 0.5 second and making sure we hit all 3 apps withing a
+		// second
+
+		BeforeEach(func() {
+			duration = 0               // only check routability once
+			interval = 2 * time.Second // hack to set timeout to 1 second
+
+			applications = make([]*parser.App, 0)
+
+			for i := 0; i < 3; i++ {
+				applications = append(applications, &parser.App{
+					Name: fmt.Sprintf("app-%d", i),
+					Guid: fmt.Sprintf("app-%d-guid", i),
+					Url:  fmt.Sprintf("%s/app", server.URL()),
+				})
+			}
+
+			server.RouteToHandler("GET", regexp.MustCompile(".*"), func(resp http.ResponseWriter, req *http.Request) {
+				time.Sleep(500 * time.Millisecond)
+				resp.WriteHeader(http.StatusOK)
+			})
+		})
+
+		It("should happen concurently", func() {
+			done := make(chan struct{})
+			go func() {
+				defer GinkgoRecover()
+
+				_, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval)
+				Expect(err).NotTo(HaveOccurred())
+				close(done)
+			}()
+
+			// assertions on curls
+			Eventually(func() int {
+				return len(server.ReceivedRequests())
+			}, time.Second).Should(Equal(3))
+
+			Eventually(done).Should(BeClosed())
 		})
 	})
 })
