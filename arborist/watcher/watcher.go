@@ -41,9 +41,6 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 			curlApps(logger, results, applications, timeout)
 		}
 	}
-
-	panic("unreachable")
-	return nil, nil
 }
 
 type curlResult struct {
