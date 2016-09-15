@@ -71,7 +71,9 @@ func main() {
 	deployer := seeder.NewDeployer(config, apps, cfClient)
 	deployer.PushApps(logger, ctx, cancel)
 	deployer.StartApps(ctx, cancel)
-	deployer.GenerateReport(ctx, cancel)
+	if succeeded := deployer.GenerateReport(ctx, cancel); !succeeded {
+		os.Exit(1)
+	}
 }
 
 func generateApps(logger lager.Logger, config config.Config) []seeder.CfApp {

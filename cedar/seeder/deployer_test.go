@@ -341,6 +341,7 @@ var _ = Describe("Deployer", func() {
 				dir, tmpFileName string
 				err              error
 				jsonParser       *json.Decoder
+				succeeded        bool
 				failedPushApps   int = 0
 			)
 
@@ -360,7 +361,7 @@ var _ = Describe("Deployer", func() {
 				deployer = seeder.NewDeployer(cfg, apps, fakeCli)
 				deployer.PushApps(fakeLogger, ctx, cancel)
 				deployer.StartApps(ctx, cancel)
-				deployer.GenerateReport(ctx, cancel)
+				succeeded = deployer.GenerateReport(ctx, cancel)
 
 				Expect(tmpFileName).Should(BeAnExistingFile())
 				outputFile, err := os.Open(tmpFileName)
@@ -383,6 +384,10 @@ var _ = Describe("Deployer", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(report.Succeeded).To(BeTrue())
 					Expect(len(report.AppStates)).To(Equal(totalApps))
+				})
+
+				It("should return true", func() {
+					Expect(succeeded).To(BeTrue())
 				})
 			})
 
@@ -414,6 +419,10 @@ var _ = Describe("Deployer", func() {
 					err = jsonParser.Decode(&report)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(report.Succeeded).To(BeFalse())
+				})
+
+				It("should return false", func() {
+					Expect(succeeded).To(BeFalse())
 				})
 			})
 		})

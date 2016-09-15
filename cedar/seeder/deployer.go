@@ -192,7 +192,7 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 	wg.Wait()
 }
 
-func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc) {
+func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc) bool {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -229,6 +229,7 @@ func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc
 		report.Apps = append(report.Apps, *value)
 	}
 	jsonParser.Encode(report)
+	return succeeded
 }
 
 func (p *Deployer) updateReport(reportType, name string, succeeded bool, startTime, endTime time.Time) {
