@@ -26,8 +26,10 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 	durationTimer := clock.NewTimer(duration)
 	intervalTicker := clock.NewTicker(interval)
 
+	timeout := interval * 9 / 10
+
 	// initial curling, so we don't have to wait for the intervalTicker to tick
-	curlApps(logger, results, applications, interval/2)
+	curlApps(logger, results, applications, timeout)
 	for {
 		select {
 		case <-durationTimer.C():
@@ -36,7 +38,7 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 			return results, nil
 		case <-intervalTicker.C():
 			logger.Info("initiating-interval-curl")
-			curlApps(logger, results, applications, interval/2)
+			curlApps(logger, results, applications, timeout)
 		}
 	}
 
