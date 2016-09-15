@@ -95,6 +95,8 @@ func curlApp(logger lager.Logger, app *parser.App, timeout time.Duration) error 
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		err = errors.New(fmt.Sprintf("not a 200, status: %d", resp.StatusCode))
 		logger.Error("non-200-get-response", err)
