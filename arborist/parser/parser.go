@@ -2,9 +2,7 @@ package parser
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"strings"
 
 	"code.cloudfoundry.org/lager"
 )
@@ -12,9 +10,9 @@ import (
 const apiUrlFormat = "http://%s.%s"
 
 type App struct {
-	Name  string `json:"app_name"`
-	Guid  string `json:"app_guid"`
-	Url   string
+	Name  string   `json:"app_name"`
+	Guid  string   `json:"app_guid"`
+	Url   string   `json:"app_url"`
 	Start AppStart `json:"start"`
 }
 
@@ -27,7 +25,7 @@ type AppFile struct {
 	Apps      []*App `json:"apps"`
 }
 
-func ParseAppFile(logger lager.Logger, appFilePath, domain string) ([]*App, error) {
+func ParseAppFile(logger lager.Logger, appFilePath string) ([]*App, error) {
 	logger = logger.Session("parser")
 	appFileContents, err := ioutil.ReadFile(appFilePath)
 	if err != nil {
@@ -45,8 +43,6 @@ func ParseAppFile(logger lager.Logger, appFilePath, domain string) ([]*App, erro
 	startedApplications := []*App{}
 	for _, app := range appFile.Apps {
 		if app.Start.Succeeded {
-			appHostName := strings.Replace(app.Name, "_", "-", -1)
-			app.Url = fmt.Sprintf(apiUrlFormat, appHostName, domain)
 			startedApplications = append(startedApplications, app)
 		}
 	}

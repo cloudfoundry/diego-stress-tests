@@ -26,6 +26,7 @@ var _ = Describe("Parser", func() {
 			  {
 					"app_name": "test_app_1",
 					"app_guid": "test_app_1_guid",
+					"app_url": "http://test-app-1.fake-domain.com",
 					"start": {
 						"succeeded": true
 				}
@@ -33,6 +34,7 @@ var _ = Describe("Parser", func() {
 				{
 					"app_name": "test_app_2",
 					"app_guid": "test_app_2_guid",
+					"app_url": "http://test-app-2.fake-domain.com",
 					"start": {
 						"succeeded": true
 					}
@@ -40,6 +42,7 @@ var _ = Describe("Parser", func() {
 				{
 					"app_name": "test_app_3",
 					"app_guid": "test_app_3_guid",
+					"app_url": "http://test-app-3.fake-domain.com",
 					"start": {
 						"succeeded": false
 					}
@@ -67,7 +70,7 @@ var _ = Describe("Parser", func() {
 	})
 
 	It("reads an app file and returns a list of started app definitions", func() {
-		applications, err := parser.ParseAppFile(logger, file.Name(), domain)
+		applications, err := parser.ParseAppFile(logger, file.Name())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(applications).To(HaveLen(2))
 		Expect(applications[0].Name).To(Equal("test_app_1"))
@@ -82,7 +85,7 @@ var _ = Describe("Parser", func() {
 		})
 
 		It("returns an error", func() {
-			_, err := parser.ParseAppFile(logger, file.Name(), domain)
+			_, err := parser.ParseAppFile(logger, file.Name())
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -94,7 +97,7 @@ var _ = Describe("Parser", func() {
 		})
 
 		It("returns an error", func() {
-			_, err := parser.ParseAppFile(logger, file.Name(), domain)
+			_, err := parser.ParseAppFile(logger, file.Name())
 			Expect(err).To(HaveOccurred())
 		})
 	})

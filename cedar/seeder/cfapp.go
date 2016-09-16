@@ -22,6 +22,7 @@ const (
 //go:generate counterfeiter -o fakes/fake_cfapp.go . CfApp
 type CfApp interface {
 	AppName() string
+	AppURL() string
 	Push(logger lager.Logger, ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
 	Start(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) error
 	Guid(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error)
@@ -54,6 +55,10 @@ func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath st
 
 func (a *CfApplication) AppName() string {
 	return a.appName
+}
+
+func (a *CfApplication) AppURL() string {
+	return a.appRoute.String()
 }
 
 func (a *CfApplication) Push(logger lager.Logger, ctx context.Context, cli cli.CFClient, assetDir string, timeout time.Duration) error {

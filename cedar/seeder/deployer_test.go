@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -55,6 +56,7 @@ var _ = Describe("Deployer", func() {
 			fakeApp := FakeCfApp{}
 			name := fmt.Sprintf("fake-push-failing-app-%d", i)
 			fakeApp.AppNameReturns(name)
+			fakeApp.AppURLReturns(fmt.Sprintf("http://%s.google.com", name))
 			fakeApp.PushReturns(fmt.Errorf("failed-to-push"))
 			apps[i] = &fakeApp
 			appNames[i] = name
@@ -64,6 +66,7 @@ var _ = Describe("Deployer", func() {
 			fakeApp := FakeCfApp{}
 			name := fmt.Sprintf("fake-start-failing-app-%d", i)
 			fakeApp.AppNameReturns(name)
+			fakeApp.AppURLReturns(fmt.Sprintf("http://%s.google.com", name))
 			fakeApp.GuidReturns(fmt.Sprintf("fake-guid-%d", i), nil)
 			fakeApp.StartReturns(fmt.Errorf("failed-to-start"))
 			apps[i] = &fakeApp
@@ -74,6 +77,7 @@ var _ = Describe("Deployer", func() {
 			fakeApp := FakeCfApp{}
 			name := fmt.Sprintf("fake-app-%d", i)
 			fakeApp.AppNameReturns(name)
+			fakeApp.AppURLReturns(fmt.Sprintf("http://%s.google.com", name))
 			fakeApp.GuidReturns(fmt.Sprintf("fake-guid-%d", i), nil)
 			apps[i] = &fakeApp
 			appNames[i] = name
@@ -384,6 +388,11 @@ var _ = Describe("Deployer", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(report.Succeeded).To(BeTrue())
 					Expect(len(report.AppStates)).To(Equal(totalApps))
+					for _, appState := range report.AppStates {
+						Expect(appState.AppURL).NotTo(Equal(""))
+						_, err := url.Parse(appState.AppURL)
+						Expect(err).NotTo(HaveOccurred())
+					}
 				})
 
 				It("should return true", func() {

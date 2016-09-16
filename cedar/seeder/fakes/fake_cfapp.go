@@ -18,6 +18,12 @@ type FakeCfApp struct {
 	appNameReturns     struct {
 		result1 string
 	}
+	AppURLStub        func() string
+	appURLMutex       sync.RWMutex
+	appURLArgsForCall []struct{}
+	appURLReturns     struct {
+		result1 string
+	}
 	PushStub        func(logger lager.Logger, ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
 	pushMutex       sync.RWMutex
 	pushArgsForCall []struct {
@@ -78,6 +84,31 @@ func (fake *FakeCfApp) AppNameCallCount() int {
 func (fake *FakeCfApp) AppNameReturns(result1 string) {
 	fake.AppNameStub = nil
 	fake.appNameReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *FakeCfApp) AppURL() string {
+	fake.appURLMutex.Lock()
+	fake.appURLArgsForCall = append(fake.appURLArgsForCall, struct{}{})
+	fake.recordInvocation("AppURL", []interface{}{})
+	fake.appURLMutex.Unlock()
+	if fake.AppURLStub != nil {
+		return fake.AppURLStub()
+	} else {
+		return fake.appURLReturns.result1
+	}
+}
+
+func (fake *FakeCfApp) AppURLCallCount() int {
+	fake.appURLMutex.RLock()
+	defer fake.appURLMutex.RUnlock()
+	return len(fake.appURLArgsForCall)
+}
+
+func (fake *FakeCfApp) AppURLReturns(result1 string) {
+	fake.AppURLStub = nil
+	fake.appURLReturns = struct {
 		result1 string
 	}{result1}
 }
@@ -197,6 +228,8 @@ func (fake *FakeCfApp) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.appNameMutex.RLock()
 	defer fake.appNameMutex.RUnlock()
+	fake.appURLMutex.RLock()
+	defer fake.appURLMutex.RUnlock()
 	fake.pushMutex.RLock()
 	defer fake.pushMutex.RUnlock()
 	fake.startMutex.RLock()

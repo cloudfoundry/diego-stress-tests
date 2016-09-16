@@ -20,7 +20,6 @@ var (
 	duration        = flag.Duration("duration", 10*time.Minute, "total duration to check routability of applications")
 	appFile         = flag.String("app-file", "", "path to json application file")
 	resultFile      = flag.String("result-file", "output.json", "path to result file")
-	domain          = flag.String("domain", "bosh-lite.com", "domain where the applications are deployed")
 )
 
 func main() {
@@ -36,7 +35,7 @@ func main() {
 	logger.Info("started")
 	defer logger.Info("exited")
 
-	applications, err := parser.ParseAppFile(logger, *appFile, *domain)
+	applications, err := parser.ParseAppFile(logger, *appFile)
 	if err != nil {
 		logger.Error("failed-to-parse-app-file", err)
 		os.Exit(1)
@@ -72,11 +71,6 @@ func validateFlags(logger lager.Logger) {
 
 	if *resultFile == "" {
 		logger.Error("result-file must be specified", validationErr)
-		os.Exit(1)
-	}
-
-	if *domain == "" {
-		logger.Error("domain must be specified", validationErr)
 		os.Exit(1)
 	}
 

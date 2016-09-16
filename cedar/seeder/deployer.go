@@ -24,6 +24,7 @@ type State struct {
 type AppStateMetrics struct {
 	AppName    *string `json:"app_name"`
 	AppGuid    *string `json:"app_guid"`
+	AppURL     string  `json:"app_url"`
 	PushState  *State  `json:"push"`
 	StartState *State  `json:"start"`
 }
@@ -128,6 +129,7 @@ func (p *Deployer) pushApp(logger lager.Logger, ctx context.Context, app CfApp, 
 	p.AppStates[name] = &AppStateMetrics{
 		AppName:    &name,
 		AppGuid:    &guid,
+		AppURL:     app.AppURL(),
 		PushState:  &State{},
 		StartState: &State{},
 	}
