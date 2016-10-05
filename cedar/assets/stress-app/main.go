@@ -29,12 +29,19 @@ func main() {
 	if err != nil {
 		maxSecondsTilCrash = 0
 	}
+	connectionPoolSize, err := strconv.Atoi(os.Getenv("CONNECTION_POOL_SIZE"))
+	if err != nil {
+		log.Fatal(err)
+		connectionPoolSize = 32767
+	}
 
 	vcapApplication := os.Getenv("VCAP_APPLICATION")
 	vcapApplicationBytes := []byte(vcapApplication)
 
 	var requestTicker, logTicker *time.Ticker
 	var crashTimer *time.Timer
+	var signal struct{}
+	connectionPool := make(chan interface{}, connectionPoolSize)
 
 	if requestRate > 0 {
 		requestTicker = time.NewTicker(time.Duration(float64(time.Second) / requestRate))
@@ -65,7 +72,8 @@ func main() {
 		for {
 			select {
 			case <-requestTicker.C:
-				go hitEndpoint(endpointToHit)
+				connectionPool <- signal
+				go hitEndpoint(endpointToHit, &connectionPool)
 			case <-logTicker.C:
 				go log.Println(vcapApplication)
 			case <-crashTimer.C:
@@ -83,7 +91,13 @@ func main() {
 	}
 }
 
-func hitEndpoint(endpoint string) {
+func hitEndpoint(endpoint string, connectionPool *chan interface{}) {
+	fmt.Printf("connections: %d.\n", len(*connectionPool))
+
+	defer func() {
+		<-*connectionPool
+	}()
+
 	resp, err := http.Get(endpoint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -96,5 +110,6 @@ func hitEndpoint(endpoint string) {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
+
 	fmt.Fprintf(os.Stdout, "%v\n", string(body))
 }
