@@ -82,6 +82,7 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 	defer func() { cfcli.pool <- cfDir }()
 
 	cmd := exec.Command("cf", args...)
+	cmd.Env = append(os.Environ(), "GOMAXPROCS=4")
 	c := make(chan error, 1)
 	buf := rbuf.NewFixedSizeRingBuf(1024)
 
