@@ -152,13 +152,13 @@ func (c *config) setAppDefinitionTypes(logger lager.Logger) {
 
 	if err != nil {
 		logger.Error("error-opening-config-file", err)
-		os.Exit(1)
+		panic("error-opening-config-file")
 	}
 
 	jsonParser := json.NewDecoder(conf)
 	if err = jsonParser.Decode(&c.appTypes); err != nil {
 		logger.Error("error-parsing-config-file", err)
-		os.Exit(1)
+		panic("error-parsing-config-file")
 	}
 	logger.Info("app-types", lager.Data{"size": len(c.appTypes)})
 }

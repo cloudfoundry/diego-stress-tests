@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 	"time"
 
 	"golang.org/x/net/context"
@@ -64,7 +63,7 @@ func main() {
 
 	if err != nil {
 		logger.Error("failed-to-initialize", err)
-		os.Exit(1)
+		panic("failed-to-initialize")
 	}
 
 	apps := generateApps(logger, config)
@@ -72,7 +71,7 @@ func main() {
 	deployer.PushApps(logger, ctx, cancel)
 	deployer.StartApps(ctx, cancel)
 	if succeeded := deployer.GenerateReport(ctx, cancel); !succeeded {
-		os.Exit(1)
+		panic("seeding failed")
 	}
 }
 

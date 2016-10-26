@@ -223,7 +223,7 @@ func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc
 
 	if err != nil {
 		logger.Error("error-opening-metrics-output-file", err)
-		os.Exit(1)
+		panic("error-opening-metrics-output-file")
 	}
 
 	jsonParser := json.NewEncoder(metricsFile)

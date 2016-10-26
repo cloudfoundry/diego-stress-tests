@@ -44,7 +44,7 @@ func NewCfClient(ctx context.Context, poolSize int) CFClient {
 
 	if _, err = os.Stat(filepath.Join(homeDir, ".cf")); os.IsNotExist(err) {
 		logger.Error("cf-dir-unavailable", err)
-		os.Exit(1)
+		panic("cf-dir-unavailable")
 	}
 
 	pool := make(chan string, poolSize)
