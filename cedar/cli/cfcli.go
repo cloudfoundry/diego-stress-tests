@@ -2,12 +2,12 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/glycerine/rbuf"
@@ -74,29 +74,24 @@ func (cfcli *CFPooledClient) Pool() chan string {
 }
 
 func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error) {
-	logger = logger.Session("cf", lager.Data{"args": args})
-
 	cfDir := <-cfcli.pool
-	os.Setenv("CF_HOME", cfDir)
 	defer func() { cfcli.pool <- cfDir }()
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
-	cmd := exec.CommandContext(ctx, "cf", args...)
-	cmd.Env = append(os.Environ(), "GOMAXPROCS=4")
+	cmd := exec.Command("cf", args...)
+	cmd.Env = append(os.Environ(), "CF_HOME="+cfDir)
+	cmd.Env = append(cmd.Env, "GOMAXPROCS=4")
 
-	buf := rbuf.NewFixedSizeRingBuf(1024)
+	logger = logger.Session("cf", lager.Data{"args": args, "cfdir": cfDir})
+
+	buf := rbuf.NewFixedSizeRingBuf(10240)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logger.Error("failed-getting-command-stdout", err)
 		return nil, err
 	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		logger.Error("failed-getting-command-stderr", err)
-		return nil, err
-	}
+	cmd.Stderr = cmd.Stdout
 
 	err = cmd.Start()
 	if err != nil {
@@ -104,7 +99,13 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 		return nil, err
 	}
 
-	_, err = buf.ReadFrom(io.MultiReader(stdout, stderr))
+	defer cancel()
+	go func() {
+		<-ctx.Done()
+		cmd.Process.Signal(syscall.SIGQUIT)
+	}()
+
+	_, err = buf.ReadFrom(stdout)
 	if err != nil {
 		logger.Error("failed-reading-command-output", err)
 		// we shouldn't exit yet, until we wait for the subprocess to exit
