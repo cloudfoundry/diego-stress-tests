@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -20,7 +19,7 @@ import (
 //go:generate counterfeiter -o fakes/fake_cfclient.go . CFClient
 type CFClient interface {
 	Cf(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error)
-	Cleanup(ctx context.Context) error
+	Cleanup(ctx context.Context)
 	Pool() chan string
 }
 
@@ -120,28 +119,20 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 	return buf.Bytes(), nil
 }
 
-func (cfcli *CFPooledClient) Cleanup(ctx context.Context) error {
+func (cfcli *CFPooledClient) Cleanup(ctx context.Context) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
 	}
 	logger = logger.Session("cf-cleanup")
-	logger.Info("started", lager.Data{"tmp-dir-size": len(cfcli.pool)})
+	logger.Info("started", lager.Data{"tmp-dir-size": cfcli.poolSize})
 	defer logger.Info("completed")
 
-	if len(cfcli.pool) != cfcli.poolSize {
-		return fmt.Errorf("pool-size-mismatch")
-	}
-
-	for tmpDir := range cfcli.pool {
-		err := os.RemoveAll(tmpDir)
+	for i := 0; i < cfcli.poolSize; i++ {
+		cfdir := <-cfcli.pool
+		err := os.RemoveAll(cfdir)
 		if err != nil {
-			logger.Error("failed-to-remove-tmpdir", err, lager.Data{"dir": tmpDir})
-		}
-		if len(cfcli.pool) == 0 {
-			close(cfcli.pool)
+			logger.Error("failed-to-remove-tmpdir", err, lager.Data{"dir": cfdir})
 		}
 	}
-
-	return nil
 }

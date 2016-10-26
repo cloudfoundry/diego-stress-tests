@@ -30,8 +30,7 @@ var _ = Describe("Cli", func() {
 	})
 
 	AfterEach(func() {
-		err := client.Cleanup(ctx)
-		Expect(err).NotTo(HaveOccurred())
+		client.Cleanup(ctx)
 		Expect(len(client.Pool())).To(Equal(0))
 		Expect(cfDir1).ToNot(BeADirectory())
 		Expect(cfDir2).ToNot(BeADirectory())

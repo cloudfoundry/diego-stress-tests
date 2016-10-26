@@ -23,13 +23,10 @@ type FakeCFClient struct {
 		result1 []byte
 		result2 error
 	}
-	CleanupStub        func(ctx context.Context) error
+	CleanupStub        func(ctx context.Context)
 	cleanupMutex       sync.RWMutex
 	cleanupArgsForCall []struct {
 		ctx context.Context
-	}
-	cleanupReturns struct {
-		result1 error
 	}
 	PoolStub        func() chan string
 	poolMutex       sync.RWMutex
@@ -78,7 +75,7 @@ func (fake *FakeCFClient) CfReturns(result1 []byte, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeCFClient) Cleanup(ctx context.Context) error {
+func (fake *FakeCFClient) Cleanup(ctx context.Context) {
 	fake.cleanupMutex.Lock()
 	fake.cleanupArgsForCall = append(fake.cleanupArgsForCall, struct {
 		ctx context.Context
@@ -86,9 +83,7 @@ func (fake *FakeCFClient) Cleanup(ctx context.Context) error {
 	fake.recordInvocation("Cleanup", []interface{}{ctx})
 	fake.cleanupMutex.Unlock()
 	if fake.CleanupStub != nil {
-		return fake.CleanupStub(ctx)
-	} else {
-		return fake.cleanupReturns.result1
+		fake.CleanupStub(ctx)
 	}
 }
 
@@ -102,13 +97,6 @@ func (fake *FakeCFClient) CleanupArgsForCall(i int) context.Context {
 	fake.cleanupMutex.RLock()
 	defer fake.cleanupMutex.RUnlock()
 	return fake.cleanupArgsForCall[i].ctx
-}
-
-func (fake *FakeCFClient) CleanupReturns(result1 error) {
-	fake.CleanupStub = nil
-	fake.cleanupReturns = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *FakeCFClient) Pool() chan string {
