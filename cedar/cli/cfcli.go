@@ -81,47 +81,42 @@ func (cfcli *CFPooledClient) Cf(logger lager.Logger, ctx context.Context, timeou
 	os.Setenv("CF_HOME", cfDir)
 	defer func() { cfcli.pool <- cfDir }()
 
+<<<<<<< Updated upstream
 	cmd := exec.Command("cf", args...)
 	cmd.Env = append(os.Environ(), "GOMAXPROCS=4")
 	c := make(chan error, 1)
+=======
+	cmdCtxt, cancel := context.WithCancel(ctx)
+	cmd := exec.CommandContext(cmdCtxt, "cf", args...)
+
+>>>>>>> Stashed changes
 	buf := rbuf.NewFixedSizeRingBuf(1024)
 
-	go func() {
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			logger.Error("failed-starting-cf-command", err)
-			c <- err
-		}
-		err = cmd.Start()
-		if err != nil {
-			logger.Error("failed-starting-cf-command", err)
-			c <- err
-		}
-
-		_, err = buf.ReadFrom(stdout)
-		if err != nil {
-			logger.Error("failed-starting-cf-command", err)
-			c <- err
-		}
-
-		err = cmd.Wait()
-		if err != nil {
-			logger.Error("failed-running-cf-command", err, lager.Data{"stdout": string(buf.Bytes())})
-			c <- err
-		}
-		c <- nil
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case err := <-c:
-		if err != nil {
-			return nil, err
-		} else {
-			return buf.Bytes(), nil
-		}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logger.Error("failed-getting-command-pipe", err)
+		return nil, err
 	}
+
+	err = cmd.Start()
+	if err != nil {
+		logger.Error("failed-starting-cf-command", err)
+		return nil, err
+	}
+
+	_, err = buf.ReadFrom(stdout)
+	if err != nil {
+		logger.Error("failed-reading-command-output", err)
+		// we shouldn't exit yet, until we wait for the subprocess to exit
+		cancel()
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		logger.Error("failed-running-cf-command", err, lager.Data{"stdout": string(buf.Bytes())})
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (cfcli *CFPooledClient) Cleanup(ctx context.Context) error {
