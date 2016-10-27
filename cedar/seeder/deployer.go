@@ -163,23 +163,21 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 			}()
 
 			var err error
-			var succeeded bool
 			var startTime, endTime time.Time
 			select {
 			case <-ctx.Done():
 				logger.Info("start-cancelled-before-starting-app", lager.Data{"AppName": appToStart.AppName()})
 				return
 			default:
-				succeeded = true
 				startTime = time.Now()
 				err = appToStart.Start(logger, ctx, p.client, p.config.Timeout())
 				endTime = time.Now()
-				logger.Info("started-app", lager.Data{"AppName": appToStart.AppName()})
 			}
 
-			if err != nil {
+			if err == nil {
+				logger.Info("started-app", lager.Data{"AppName": appToStart.AppName()})
+			} else {
 				logger.Error("failed-starting-app", err, lager.Data{"total-incurred-failures": len(p.errChan) + 1})
-				succeeded = false
 				select {
 				case p.errChan <- err:
 				default:
@@ -187,6 +185,7 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 					cancel()
 				}
 			}
+			succeeded := err == nil
 			p.updateReport(Start, appToStart.AppName(), succeeded, startTime, endTime)
 
 		}()
