@@ -8,6 +8,156 @@ import (
 	"code.cloudfoundry.org/lager/chug"
 )
 
+var ContainerCreationMapper = &Mapper{
+	Name: "ContainerCreationMapper",
+
+	StartString: "run-container.creating-container",
+	EndString:   "run-container.succeeded-creating-container-in-garden",
+
+	Transform: func(s, e chug.Entry) Metric {
+		component := "executor"
+		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		return Metric{
+			Name: "ContainerCreation",
+			Tags: map[string]string{
+				"component":      component,
+				"container-guid": fmt.Sprintf("%s", e.Log.Data["container-guid"]),
+			},
+			Value:     strconv.FormatInt(int64(timeDiff), 10),
+			Timestamp: s.Log.Timestamp,
+		}
+	},
+
+	GetKey: func(entry chug.Entry) (string, error) {
+		if entry.Log.Data["container-guid"] == nil {
+			return "", fmt.Errorf("not an http request")
+		}
+		return fmt.Sprintf("%s:%s", entry.Log.Data["container-guid"], entry.Log.Session), nil
+	},
+
+	entriesMap: make(map[string]chug.Entry),
+}
+
+var ContainerRunnerMapper = &Mapper{
+	Name: "ContainerRunnerMapper",
+
+	StartString: "run-container.running-container-in-garden",
+	EndString:   "run-container.succeeded-running-container-in-garden",
+
+	Transform: func(s, e chug.Entry) Metric {
+		component := "executor"
+		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		return Metric{
+			Name: "ContainerRun",
+			Tags: map[string]string{
+				"component":      component,
+				"container-guid": fmt.Sprintf("%s", e.Log.Data["container-guid"]),
+			},
+			Value:     strconv.FormatInt(int64(timeDiff), 10),
+			Timestamp: s.Log.Timestamp,
+		}
+	},
+
+	GetKey: func(entry chug.Entry) (string, error) {
+		if entry.Log.Data["container-guid"] == nil {
+			return "", fmt.Errorf("not an http request")
+		}
+		return fmt.Sprintf("%s:%s", entry.Log.Data["container-guid"], entry.Log.Session), nil
+	},
+
+	entriesMap: make(map[string]chug.Entry),
+}
+
+var CertIOMapper = &Mapper{
+	Name: "CertIOMapper",
+
+	StartString: "save-keys.starting",
+	EndString:   "save-keys.done",
+
+	Transform: func(s, e chug.Entry) Metric {
+		component := "executor"
+		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		return Metric{
+			Name: "CertIO",
+			Tags: map[string]string{
+				"component":      component,
+				"container-guid": fmt.Sprintf("%s", e.Log.Data["container-guid"]),
+			},
+			Value:     strconv.FormatInt(int64(timeDiff), 10),
+			Timestamp: s.Log.Timestamp,
+		}
+	},
+
+	GetKey: func(entry chug.Entry) (string, error) {
+		if entry.Log.Data["container-guid"] == nil {
+			return "", fmt.Errorf("not an http request")
+		}
+		return fmt.Sprintf("%s:%s", entry.Log.Data["container-guid"], entry.Log.Session), nil
+	},
+
+	entriesMap: make(map[string]chug.Entry),
+}
+
+var CertGenerationMapper = &Mapper{
+	Name: "KeyGenerationMapper",
+
+	StartString: "create-certs.starting",
+	EndString:   "create-certs.done",
+
+	Transform: func(s, e chug.Entry) Metric {
+		component := "executor"
+		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		return Metric{
+			Name: "CertGeneration",
+			Tags: map[string]string{
+				"component":      component,
+				"container-guid": fmt.Sprintf("%s", e.Log.Data["container-guid"]),
+			},
+			Value:     strconv.FormatInt(int64(timeDiff), 10),
+			Timestamp: s.Log.Timestamp,
+		}
+	},
+
+	GetKey: func(entry chug.Entry) (string, error) {
+		if entry.Log.Data["container-guid"] == nil {
+			return "", fmt.Errorf("not an http request")
+		}
+		return fmt.Sprintf("%s:%s", entry.Log.Data["container-guid"], entry.Log.Session), nil
+	},
+
+	entriesMap: make(map[string]chug.Entry),
+}
+
+var KeyGenerationMapper = &Mapper{
+	Name: "KeyGenerationMapper",
+
+	StartString: "create-keys.starting",
+	EndString:   "create-keys.done",
+
+	Transform: func(s, e chug.Entry) Metric {
+		component := "executor"
+		timeDiff := e.Log.Timestamp.Sub(s.Log.Timestamp)
+		return Metric{
+			Name: "KeyGeneration",
+			Tags: map[string]string{
+				"component":      component,
+				"container-guid": fmt.Sprintf("%s", e.Log.Data["container-guid"]),
+			},
+			Value:     strconv.FormatInt(int64(timeDiff), 10),
+			Timestamp: s.Log.Timestamp,
+		}
+	},
+
+	GetKey: func(entry chug.Entry) (string, error) {
+		if entry.Log.Data["container-guid"] == nil {
+			return "", fmt.Errorf("not an http request")
+		}
+		return fmt.Sprintf("%s:%s", entry.Log.Data["container-guid"], entry.Log.Session), nil
+	},
+
+	entriesMap: make(map[string]chug.Entry),
+}
+
 var RequestLatencyMapper = &Mapper{
 	Name: "RequestLatencyMapper",
 
