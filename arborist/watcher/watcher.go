@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,7 +20,7 @@ type Result struct {
 	FailedRequests     int
 }
 
-func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*parser.App, duration, interval time.Duration) (map[string]Result, error) {
+func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*parser.App, duration, interval time.Duration, skipVerifyCertificate bool) (map[string]Result, error) {
 	logger = logger.Session("watcher")
 	results := map[string]Result{}
 
@@ -29,7 +30,7 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 	timeout := interval * 9 / 10
 
 	// initial curling, so we don't have to wait for the intervalTicker to tick
-	curlApps(logger, results, applications, timeout)
+	curlApps(logger, results, applications, skipVerifyCertificate, timeout)
 	for {
 		select {
 		case <-durationTimer.C():
@@ -38,7 +39,7 @@ func CheckRoutability(logger lager.Logger, clock clock.Clock, applications []*pa
 			return results, nil
 		case <-intervalTicker.C():
 			logger.Info("initiating-interval-curl")
-			curlApps(logger, results, applications, timeout)
+			curlApps(logger, results, applications, skipVerifyCertificate, timeout)
 		}
 	}
 }
@@ -48,12 +49,12 @@ type curlResult struct {
 	passed bool
 }
 
-func curlApps(logger lager.Logger, results map[string]Result, applications []*parser.App, timeout time.Duration) {
+func curlApps(logger lager.Logger, results map[string]Result, applications []*parser.App, skipVerifyCertificate bool, timeout time.Duration) {
 	resultsCh := make(chan curlResult)
 
 	for _, app := range applications {
 		go func(a *parser.App) {
-			err := curlApp(logger, a, timeout)
+			err := curlApp(logger, a, skipVerifyCertificate, timeout)
 			resultsCh <- curlResult{
 				app:    a,
 				passed: err == nil,
@@ -83,13 +84,16 @@ func curlApps(logger lager.Logger, results map[string]Result, applications []*pa
 	}
 }
 
-func curlApp(logger lager.Logger, app *parser.App, timeout time.Duration) error {
+func curlApp(logger lager.Logger, app *parser.App, skipVerifyCertificate bool, timeout time.Duration) error {
 	logger = logger.Session("curl", lager.Data{"url": app.Url, "app-guid": app.Guid})
 	logger.Debug("started")
 	defer logger.Debug("finished")
 
-	client := http.Client{Timeout: timeout}
+	client := http.Client{Timeout: timeout, Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerifyCertificate},
+	}}
 	resp, err := client.Get(app.Url)
+
 	if err != nil {
 		logger.Error("failed-to-perform-get", err)
 		return err

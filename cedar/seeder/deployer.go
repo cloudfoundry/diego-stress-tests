@@ -170,7 +170,7 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 				return
 			default:
 				startTime = time.Now()
-				err = appToStart.Start(logger, ctx, p.client, p.config.Timeout())
+				err = appToStart.Start(logger, ctx, p.client, p.config.SkipVerifyCertificate(), p.config.Timeout())
 				endTime = time.Now()
 			}
 

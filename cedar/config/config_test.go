@@ -20,6 +20,8 @@ var _ = Describe("Cedar", func() {
 		tolerance                                          float64
 		domain, appPayload, prefix, configFile, outputFile string
 		timeout                                            time.Duration
+		useSSL                                             bool
+		skipVerifyCertificate                              bool
 	)
 
 	BeforeEach(func() {
@@ -28,6 +30,8 @@ var _ = Describe("Cedar", func() {
 		maxPollingErrors = 1
 		tolerance = 0.5
 		domain = "bosh-lite.com"
+		useSSL = false
+		skipVerifyCertificate = false
 		appPayload = "assets/temp-app"
 		prefix = "cedarapp"
 		configFile = fakeConfigFile
@@ -44,6 +48,8 @@ var _ = Describe("Cedar", func() {
 			tolerance,
 			appPayload, prefix, domain, configFile, outputFile,
 			timeout,
+			useSSL,
+			skipVerifyCertificate,
 		)
 	})
 

@@ -1,6 +1,8 @@
 package seeder
 
 import (
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,11 +14,12 @@ import (
 
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/diego-stress-tests/cedar/cli"
+
 	"code.cloudfoundry.org/lager"
 )
 
 const (
-	AppRoutePattern = "http://%s.%s"
+	AppRoutePattern = "%s://%s.%s"
 )
 
 //go:generate counterfeiter -o fakes/fake_cfapp.go . CfApp
@@ -24,7 +27,7 @@ type CfApp interface {
 	AppName() string
 	AppURL() string
 	Push(logger lager.Logger, ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
-	Start(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) error
+	Start(logger lager.Logger, ctx context.Context, client cli.CFClient, skipVerifyCertificate bool, timeout time.Duration) error
 	Guid(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error)
 }
 
@@ -34,12 +37,19 @@ type CfApplication struct {
 	attemptedCurls int
 	failedCurls    int
 	domain         string
+	useSSL         bool
 	maxFailedCurls int
 	manifestPath   string
 }
 
-func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath string) (CfApp, error) {
-	rawUrl := fmt.Sprintf(AppRoutePattern, appName, domain)
+func NewCfApp(appName string, domain string, useSSL bool, maxFailedCurls int, manifestPath string) (CfApp, error) {
+	protocol := "http"
+	if useSSL {
+		protocol = "https"
+	}
+
+	rawUrl := fmt.Sprintf(AppRoutePattern, protocol, appName, domain)
+
 	appUrl, err := url.Parse(rawUrl)
 	if err != nil {
 		return nil, err
@@ -48,6 +58,7 @@ func NewCfApp(appName string, domain string, maxFailedCurls int, manifestPath st
 		appName:        appName,
 		appRoute:       *appUrl,
 		domain:         domain,
+		useSSL:         useSSL,
 		maxFailedCurls: maxFailedCurls,
 		manifestPath:   manifestPath,
 	}, nil
@@ -70,7 +81,8 @@ func (a *CfApplication) Push(logger lager.Logger, ctx context.Context, cli cli.C
 		logger.Error("failed-to-push", err)
 		return err
 	}
-	endpointToHit := fmt.Sprintf(AppRoutePattern, a.appName, a.domain)
+
+	endpointToHit := a.AppURL()
 	_, err = cli.Cf(logger, ctx, timeout, "set-env", a.appName, "ENDPOINT_TO_HIT", endpointToHit)
 	if err != nil {
 		logger.Error("failed-to-set-env", err)
@@ -81,7 +93,7 @@ func (a *CfApplication) Push(logger lager.Logger, ctx context.Context, cli cli.C
 	return nil
 }
 
-func (a *CfApplication) Start(logger lager.Logger, ctx context.Context, cli cli.CFClient, timeout time.Duration) error {
+func (a *CfApplication) Start(logger lager.Logger, ctx context.Context, cli cli.CFClient, skipVerifyCertificate bool, timeout time.Duration) error {
 	logger = logger.Session("start", lager.Data{"app": a.appName})
 	logger.Info("started")
 
@@ -90,7 +102,7 @@ func (a *CfApplication) Start(logger lager.Logger, ctx context.Context, cli cli.
 		logger.Error("failed-to-start", err)
 		return err
 	}
-	response, err := a.curl(ctx)
+	response, err := a.curl(ctx, skipVerifyCertificate)
 	if err != nil {
 		logger.Error("failed-curling-app", err)
 		return err
@@ -123,7 +135,7 @@ func (a *CfApplication) SetUrl(appUrl string) error {
 	return nil
 }
 
-func (a *CfApplication) curl(ctx context.Context) (string, error) {
+func (a *CfApplication) curl(ctx context.Context, skipVerifyCertificate bool) (string, error) {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
 		logger, _ = cflager.New("cedar")
@@ -138,7 +150,11 @@ func (a *CfApplication) curl(ctx context.Context) (string, error) {
 
 	url := endpointUrl.String()
 
-	resp, err := http.Get(url)
+	client := http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerifyCertificate},
+	}}
+	resp, err := client.Get(url)
+
 	if err != nil {
 		logger.Error("failed-to-curl", err)
 		return "", err
@@ -162,12 +178,12 @@ func (a *CfApplication) curl(ctx context.Context) (string, error) {
 		a.failedCurls++
 		logger.Error("retrying-curl", err, lager.Data{"url": url, "status-code": statusCode, "body": body, "retry": a.failedCurls})
 		time.Sleep(2 * time.Second)
-		return a.curl(ctx)
+		return a.curl(ctx, skipVerifyCertificate)
 
 	default:
 		logger.Error("failed-to-curl", err, lager.Data{"url": url, "status-code": statusCode, "body": body})
 		a.failedCurls++
-		return "", err
+		return "", errors.New("failed to curl app url")
 	}
 }
 

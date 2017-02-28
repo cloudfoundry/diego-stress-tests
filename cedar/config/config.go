@@ -25,6 +25,8 @@ type Config interface {
 	AppPayload() string
 	Prefix() string
 	Domain() string
+	UseSSL() bool
+	SkipVerifyCertificate() bool
 	// ConfigFile() string
 	OutputFile() string
 	Timeout() time.Duration
@@ -34,16 +36,18 @@ type Config interface {
 }
 
 type config struct {
-	numBatches       int
-	maxInFlight      int
-	maxPollingErrors int
-	tolerance        float64
-	domain           string
-	appPayload       string
-	prefix           string
-	configFile       string
-	outputFile       string
-	timeout          time.Duration
+	numBatches            int
+	maxInFlight           int
+	maxPollingErrors      int
+	tolerance             float64
+	domain                string
+	useSSL                bool
+	skipVerifyCertificate bool
+	appPayload            string
+	prefix                string
+	configFile            string
+	outputFile            string
+	timeout               time.Duration
 
 	appTypes []AppDefinition
 }
@@ -55,18 +59,21 @@ func NewConfig(
 	tolerance float64,
 	appPayload, prefix, domain, configFile, outputFile string,
 	timeout time.Duration,
+	useSSL, skipVerifyCertificate bool,
 ) (Config, error) {
 	c := &config{
-		numBatches:       numBatches,
-		maxInFlight:      maxInFlight,
-		maxPollingErrors: maxPollingErrors,
-		tolerance:        tolerance,
-		appPayload:       appPayload,
-		prefix:           prefix,
-		domain:           domain,
-		configFile:       configFile,
-		outputFile:       outputFile,
-		timeout:          timeout,
+		numBatches:            numBatches,
+		maxInFlight:           maxInFlight,
+		maxPollingErrors:      maxPollingErrors,
+		tolerance:             tolerance,
+		appPayload:            appPayload,
+		prefix:                prefix,
+		domain:                domain,
+		useSSL:                useSSL,
+		skipVerifyCertificate: skipVerifyCertificate,
+		configFile:            configFile,
+		outputFile:            outputFile,
+		timeout:               timeout,
 	}
 	err := c.init(logger, cfClient)
 	if err != nil {
@@ -77,6 +84,14 @@ func NewConfig(
 
 func (c *config) Domain() string {
 	return c.domain
+}
+
+func (c *config) UseSSL() bool {
+	return c.useSSL
+}
+
+func (c *config) SkipVerifyCertificate() bool {
+	return c.skipVerifyCertificate
 }
 
 func (c *config) AppTypes() []AppDefinition {

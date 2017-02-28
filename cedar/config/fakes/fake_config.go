@@ -45,6 +45,18 @@ type FakeConfig struct {
 	domainReturns     struct {
 		result1 string
 	}
+	UseSSLStub        func() bool
+	useSSLMutex       sync.RWMutex
+	useSSLArgsForCall []struct{}
+	useSSLReturns     struct {
+		result1 bool
+	}
+	SkipVerifyCertificateStub        func() bool
+	skipVerifyCertificateMutex       sync.RWMutex
+	skipVerifyCertificateArgsForCall []struct{}
+	skipVerifyCertificateReturns     struct {
+		result1 bool
+	}
 	OutputFileStub        func() string
 	outputFileMutex       sync.RWMutex
 	outputFileArgsForCall []struct{}
@@ -86,9 +98,8 @@ func (fake *FakeConfig) NumBatches() int {
 	fake.numBatchesMutex.Unlock()
 	if fake.NumBatchesStub != nil {
 		return fake.NumBatchesStub()
-	} else {
-		return fake.numBatchesReturns.result1
 	}
+	return fake.numBatchesReturns.result1
 }
 
 func (fake *FakeConfig) NumBatchesCallCount() int {
@@ -111,9 +122,8 @@ func (fake *FakeConfig) MaxInFlight() int {
 	fake.maxInFlightMutex.Unlock()
 	if fake.MaxInFlightStub != nil {
 		return fake.MaxInFlightStub()
-	} else {
-		return fake.maxInFlightReturns.result1
 	}
+	return fake.maxInFlightReturns.result1
 }
 
 func (fake *FakeConfig) MaxInFlightCallCount() int {
@@ -136,9 +146,8 @@ func (fake *FakeConfig) MaxPollingErrors() int {
 	fake.maxPollingErrorsMutex.Unlock()
 	if fake.MaxPollingErrorsStub != nil {
 		return fake.MaxPollingErrorsStub()
-	} else {
-		return fake.maxPollingErrorsReturns.result1
 	}
+	return fake.maxPollingErrorsReturns.result1
 }
 
 func (fake *FakeConfig) MaxPollingErrorsCallCount() int {
@@ -161,9 +170,8 @@ func (fake *FakeConfig) AppPayload() string {
 	fake.appPayloadMutex.Unlock()
 	if fake.AppPayloadStub != nil {
 		return fake.AppPayloadStub()
-	} else {
-		return fake.appPayloadReturns.result1
 	}
+	return fake.appPayloadReturns.result1
 }
 
 func (fake *FakeConfig) AppPayloadCallCount() int {
@@ -186,9 +194,8 @@ func (fake *FakeConfig) Prefix() string {
 	fake.prefixMutex.Unlock()
 	if fake.PrefixStub != nil {
 		return fake.PrefixStub()
-	} else {
-		return fake.prefixReturns.result1
 	}
+	return fake.prefixReturns.result1
 }
 
 func (fake *FakeConfig) PrefixCallCount() int {
@@ -211,9 +218,8 @@ func (fake *FakeConfig) Domain() string {
 	fake.domainMutex.Unlock()
 	if fake.DomainStub != nil {
 		return fake.DomainStub()
-	} else {
-		return fake.domainReturns.result1
 	}
+	return fake.domainReturns.result1
 }
 
 func (fake *FakeConfig) DomainCallCount() int {
@@ -229,6 +235,54 @@ func (fake *FakeConfig) DomainReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeConfig) UseSSL() bool {
+	fake.useSSLMutex.Lock()
+	fake.useSSLArgsForCall = append(fake.useSSLArgsForCall, struct{}{})
+	fake.recordInvocation("UseSSL", []interface{}{})
+	fake.useSSLMutex.Unlock()
+	if fake.UseSSLStub != nil {
+		return fake.UseSSLStub()
+	}
+	return fake.useSSLReturns.result1
+}
+
+func (fake *FakeConfig) UseSSLCallCount() int {
+	fake.useSSLMutex.RLock()
+	defer fake.useSSLMutex.RUnlock()
+	return len(fake.useSSLArgsForCall)
+}
+
+func (fake *FakeConfig) UseSSLReturns(result1 bool) {
+	fake.UseSSLStub = nil
+	fake.useSSLReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FakeConfig) SkipVerifyCertificate() bool {
+	fake.skipVerifyCertificateMutex.Lock()
+	fake.skipVerifyCertificateArgsForCall = append(fake.skipVerifyCertificateArgsForCall, struct{}{})
+	fake.recordInvocation("SkipVerifyCertificate", []interface{}{})
+	fake.skipVerifyCertificateMutex.Unlock()
+	if fake.SkipVerifyCertificateStub != nil {
+		return fake.SkipVerifyCertificateStub()
+	}
+	return fake.skipVerifyCertificateReturns.result1
+}
+
+func (fake *FakeConfig) SkipVerifyCertificateCallCount() int {
+	fake.skipVerifyCertificateMutex.RLock()
+	defer fake.skipVerifyCertificateMutex.RUnlock()
+	return len(fake.skipVerifyCertificateArgsForCall)
+}
+
+func (fake *FakeConfig) SkipVerifyCertificateReturns(result1 bool) {
+	fake.SkipVerifyCertificateStub = nil
+	fake.skipVerifyCertificateReturns = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *FakeConfig) OutputFile() string {
 	fake.outputFileMutex.Lock()
 	fake.outputFileArgsForCall = append(fake.outputFileArgsForCall, struct{}{})
@@ -236,9 +290,8 @@ func (fake *FakeConfig) OutputFile() string {
 	fake.outputFileMutex.Unlock()
 	if fake.OutputFileStub != nil {
 		return fake.OutputFileStub()
-	} else {
-		return fake.outputFileReturns.result1
 	}
+	return fake.outputFileReturns.result1
 }
 
 func (fake *FakeConfig) OutputFileCallCount() int {
@@ -261,9 +314,8 @@ func (fake *FakeConfig) Timeout() time.Duration {
 	fake.timeoutMutex.Unlock()
 	if fake.TimeoutStub != nil {
 		return fake.TimeoutStub()
-	} else {
-		return fake.timeoutReturns.result1
 	}
+	return fake.timeoutReturns.result1
 }
 
 func (fake *FakeConfig) TimeoutCallCount() int {
@@ -286,9 +338,8 @@ func (fake *FakeConfig) TotalAppCount() int {
 	fake.totalAppCountMutex.Unlock()
 	if fake.TotalAppCountStub != nil {
 		return fake.TotalAppCountStub()
-	} else {
-		return fake.totalAppCountReturns.result1
 	}
+	return fake.totalAppCountReturns.result1
 }
 
 func (fake *FakeConfig) TotalAppCountCallCount() int {
@@ -311,9 +362,8 @@ func (fake *FakeConfig) MaxAllowedFailures() int {
 	fake.maxAllowedFailuresMutex.Unlock()
 	if fake.MaxAllowedFailuresStub != nil {
 		return fake.MaxAllowedFailuresStub()
-	} else {
-		return fake.maxAllowedFailuresReturns.result1
 	}
+	return fake.maxAllowedFailuresReturns.result1
 }
 
 func (fake *FakeConfig) MaxAllowedFailuresCallCount() int {
@@ -336,9 +386,8 @@ func (fake *FakeConfig) AppTypes() []config.AppDefinition {
 	fake.appTypesMutex.Unlock()
 	if fake.AppTypesStub != nil {
 		return fake.AppTypesStub()
-	} else {
-		return fake.appTypesReturns.result1
 	}
+	return fake.appTypesReturns.result1
 }
 
 func (fake *FakeConfig) AppTypesCallCount() int {
@@ -369,6 +418,10 @@ func (fake *FakeConfig) Invocations() map[string][][]interface{} {
 	defer fake.prefixMutex.RUnlock()
 	fake.domainMutex.RLock()
 	defer fake.domainMutex.RUnlock()
+	fake.useSSLMutex.RLock()
+	defer fake.useSSLMutex.RUnlock()
+	fake.skipVerifyCertificateMutex.RLock()
+	defer fake.skipVerifyCertificateMutex.RUnlock()
 	fake.outputFileMutex.RLock()
 	defer fake.outputFileMutex.RUnlock()
 	fake.timeoutMutex.RLock()

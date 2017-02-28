@@ -46,7 +46,7 @@ var _ = Describe("AppGenerator", func() {
 		})
 	})
 
-	Context("when an app prefix is porvided", func() {
+	Context("when an app prefix is provided", func() {
 		BeforeEach(func() {
 			cfg.PrefixReturns("cf-2016-08-16T1600")
 		})
