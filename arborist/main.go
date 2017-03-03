@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	requestInterval = flag.Duration("request-interval", 1*time.Minute, "interval in seconds at which to make requests to each individual app")
-	duration        = flag.Duration("duration", 10*time.Minute, "total duration to check routability of applications")
-	appFile         = flag.String("app-file", "", "path to json application file")
-	resultFile      = flag.String("result-file", "output.json", "path to result file")
+	requestInterval       = flag.Duration("request-interval", 1*time.Minute, "interval in seconds at which to make requests to each individual app")
+	duration              = flag.Duration("duration", 10*time.Minute, "total duration to check routability of applications")
+	appFile               = flag.String("app-file", "", "path to json application file")
+	resultFile            = flag.String("result-file", "output.json", "path to result file")
+	skipVerifyCertificate = flag.Bool("skip-verify-certificate", false, "whether to ignore invalid TLS certificates")
 )
 
 func main() {
@@ -41,7 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	results, err := watcher.CheckRoutability(logger, clock, applications, *duration, *requestInterval)
+	results, err := watcher.CheckRoutability(logger, clock, applications, *duration, *requestInterval, *skipVerifyCertificate)
 	if err != nil {
 		// This should be impossible
 		logger.Error("failed-to-check-routability", err)

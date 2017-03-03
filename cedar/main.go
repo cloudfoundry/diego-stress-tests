@@ -14,17 +14,18 @@ import (
 )
 
 var (
-	domain = flag.String("domain", "", "app domain")
-
-	numBatches       = flag.Int("n", 1, "number of batches to seed")
-	maxInFlight      = flag.Int("k", 1, "max number of cf operations in flight")
-	maxPollingErrors = flag.Int("max-polling-errors", 1, "max number of curl failures")
-	tolerance        = flag.Float64("tolerance", 1.0, "fractional failure tolerance")
-	configFile       = flag.String("config", "config.json", "path to cedar config file")
-	outputFile       = flag.String("output", "output.json", "path to cedar metric results file")
-	appPayload       = flag.String("payload", "assets/temp-app", "directory containing the stress-app payload to push")
-	prefix           = flag.String("prefix", "cedarapp", "the naming prefix for cedar generated apps")
-	timeout          = flag.Duration("timeout", 30*time.Second, "time allowed for a push or start operation, golang duration")
+	domain                = flag.String("domain", "", "app domain")
+	useSSL                = flag.Bool("use-ssl", false, "whether to use https when curling app endpoints")
+	skipVerifyCertificate = flag.Bool("skip-verify-certificate", false, "whether to ignore invalid TLS certificates")
+	numBatches            = flag.Int("n", 1, "number of batches to seed")
+	maxInFlight           = flag.Int("k", 1, "max number of cf operations in flight")
+	maxPollingErrors      = flag.Int("max-polling-errors", 1, "max number of curl failures")
+	tolerance             = flag.Float64("tolerance", 1.0, "fractional failure tolerance")
+	configFile            = flag.String("config", "config.json", "path to cedar config file")
+	outputFile            = flag.String("output", "output.json", "path to cedar metric results file")
+	appPayload            = flag.String("payload", "assets/temp-app", "directory containing the stress-app payload to push")
+	prefix                = flag.String("prefix", "cedarapp", "the naming prefix for cedar generated apps")
+	timeout               = flag.Duration("timeout", 30*time.Second, "time allowed for a push or start operation, golang duration")
 )
 
 func main() {
@@ -59,6 +60,8 @@ func main() {
 		*configFile,
 		*outputFile,
 		*timeout,
+		*useSSL,
+		*skipVerifyCertificate,
 	)
 
 	if err != nil {

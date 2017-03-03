@@ -32,7 +32,7 @@ func (a appGenerator) Apps(logger lager.Logger) []CfApp {
 			for j := 0; j < appDef.AppCount; j++ {
 				name := a.appName(appDef.AppNamePrefix, i, j)
 				logger.Info("generate-app", lager.Data{"appName": name})
-				seedApp, err := NewCfApp(name, a.config.Domain(), a.config.MaxPollingErrors(), appDef.ManifestPath)
+				seedApp, err := NewCfApp(name, a.config.Domain(), a.config.UseSSL(), a.config.MaxPollingErrors(), appDef.ManifestPath)
 				if err != nil {
 					logger.Error("failed-generating-app", err)
 					continue

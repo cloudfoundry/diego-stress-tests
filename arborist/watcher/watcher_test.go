@@ -52,6 +52,10 @@ var _ = Describe("Watcher", func() {
 
 	})
 
+	AfterEach(func() {
+		server.Close()
+	})
+
 	Context("when the requests are handled successfully", func() {
 		var (
 			app1Requests = 0
@@ -81,7 +85,7 @@ var _ = Describe("Watcher", func() {
 			go func() {
 				defer GinkgoRecover()
 
-				result, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval)
+				result, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(BeEquivalentTo(map[string]watcher.Result{
 					"app-1-guid": watcher.Result{
@@ -145,7 +149,7 @@ var _ = Describe("Watcher", func() {
 			go func() {
 				defer GinkgoRecover()
 
-				result, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval)
+				result, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(BeEquivalentTo(map[string]watcher.Result{
 					"app-1-guid": watcher.Result{
@@ -206,7 +210,7 @@ var _ = Describe("Watcher", func() {
 			go func() {
 				defer GinkgoRecover()
 
-				_, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval)
+				_, err := watcher.CheckRoutability(logger, fakeClock, applications, duration, interval, false)
 				Expect(err).NotTo(HaveOccurred())
 				close(done)
 			}()

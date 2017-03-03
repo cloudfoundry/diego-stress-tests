@@ -36,13 +36,14 @@ type FakeCfApp struct {
 	pushReturns struct {
 		result1 error
 	}
-	StartStub        func(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) error
+	StartStub        func(logger lager.Logger, ctx context.Context, client cli.CFClient, skipVerifyCertificate bool, timeout time.Duration) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
-		logger  lager.Logger
-		ctx     context.Context
-		client  cli.CFClient
-		timeout time.Duration
+		logger                lager.Logger
+		ctx                   context.Context
+		client                cli.CFClient
+		skipVerifyCertificate bool
+		timeout               time.Duration
 	}
 	startReturns struct {
 		result1 error
@@ -70,9 +71,8 @@ func (fake *FakeCfApp) AppName() string {
 	fake.appNameMutex.Unlock()
 	if fake.AppNameStub != nil {
 		return fake.AppNameStub()
-	} else {
-		return fake.appNameReturns.result1
 	}
+	return fake.appNameReturns.result1
 }
 
 func (fake *FakeCfApp) AppNameCallCount() int {
@@ -95,9 +95,8 @@ func (fake *FakeCfApp) AppURL() string {
 	fake.appURLMutex.Unlock()
 	if fake.AppURLStub != nil {
 		return fake.AppURLStub()
-	} else {
-		return fake.appURLReturns.result1
 	}
+	return fake.appURLReturns.result1
 }
 
 func (fake *FakeCfApp) AppURLCallCount() int {
@@ -126,9 +125,8 @@ func (fake *FakeCfApp) Push(logger lager.Logger, ctx context.Context, client cli
 	fake.pushMutex.Unlock()
 	if fake.PushStub != nil {
 		return fake.PushStub(logger, ctx, client, payload, timeout)
-	} else {
-		return fake.pushReturns.result1
 	}
+	return fake.pushReturns.result1
 }
 
 func (fake *FakeCfApp) PushCallCount() int {
@@ -150,21 +148,21 @@ func (fake *FakeCfApp) PushReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeCfApp) Start(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) error {
+func (fake *FakeCfApp) Start(logger lager.Logger, ctx context.Context, client cli.CFClient, skipVerifyCertificate bool, timeout time.Duration) error {
 	fake.startMutex.Lock()
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
-		logger  lager.Logger
-		ctx     context.Context
-		client  cli.CFClient
-		timeout time.Duration
-	}{logger, ctx, client, timeout})
-	fake.recordInvocation("Start", []interface{}{logger, ctx, client, timeout})
+		logger                lager.Logger
+		ctx                   context.Context
+		client                cli.CFClient
+		skipVerifyCertificate bool
+		timeout               time.Duration
+	}{logger, ctx, client, skipVerifyCertificate, timeout})
+	fake.recordInvocation("Start", []interface{}{logger, ctx, client, skipVerifyCertificate, timeout})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(logger, ctx, client, timeout)
-	} else {
-		return fake.startReturns.result1
+		return fake.StartStub(logger, ctx, client, skipVerifyCertificate, timeout)
 	}
+	return fake.startReturns.result1
 }
 
 func (fake *FakeCfApp) StartCallCount() int {
@@ -173,10 +171,10 @@ func (fake *FakeCfApp) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *FakeCfApp) StartArgsForCall(i int) (lager.Logger, context.Context, cli.CFClient, time.Duration) {
+func (fake *FakeCfApp) StartArgsForCall(i int) (lager.Logger, context.Context, cli.CFClient, bool, time.Duration) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
-	return fake.startArgsForCall[i].logger, fake.startArgsForCall[i].ctx, fake.startArgsForCall[i].client, fake.startArgsForCall[i].timeout
+	return fake.startArgsForCall[i].logger, fake.startArgsForCall[i].ctx, fake.startArgsForCall[i].client, fake.startArgsForCall[i].skipVerifyCertificate, fake.startArgsForCall[i].timeout
 }
 
 func (fake *FakeCfApp) StartReturns(result1 error) {
@@ -198,9 +196,8 @@ func (fake *FakeCfApp) Guid(logger lager.Logger, ctx context.Context, client cli
 	fake.guidMutex.Unlock()
 	if fake.GuidStub != nil {
 		return fake.GuidStub(logger, ctx, client, timeout)
-	} else {
-		return fake.guidReturns.result1, fake.guidReturns.result2
 	}
+	return fake.guidReturns.result1, fake.guidReturns.result2
 }
 
 func (fake *FakeCfApp) GuidCallCount() int {
