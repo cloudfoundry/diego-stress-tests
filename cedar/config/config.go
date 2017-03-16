@@ -25,7 +25,7 @@ type Config interface {
 	AppPayload() string
 	Prefix() string
 	Domain() string
-	UseSSL() bool
+	UseTLS() bool
 	SkipVerifyCertificate() bool
 	// ConfigFile() string
 	OutputFile() string
@@ -41,7 +41,7 @@ type config struct {
 	maxPollingErrors      int
 	tolerance             float64
 	domain                string
-	useSSL                bool
+	useTLS                bool
 	skipVerifyCertificate bool
 	appPayload            string
 	prefix                string
@@ -59,7 +59,7 @@ func NewConfig(
 	tolerance float64,
 	appPayload, prefix, domain, configFile, outputFile string,
 	timeout time.Duration,
-	useSSL, skipVerifyCertificate bool,
+	useTLS, skipVerifyCertificate bool,
 ) (Config, error) {
 	c := &config{
 		numBatches:            numBatches,
@@ -69,7 +69,7 @@ func NewConfig(
 		appPayload:            appPayload,
 		prefix:                prefix,
 		domain:                domain,
-		useSSL:                useSSL,
+		useTLS:                useTLS,
 		skipVerifyCertificate: skipVerifyCertificate,
 		configFile:            configFile,
 		outputFile:            outputFile,
@@ -86,8 +86,8 @@ func (c *config) Domain() string {
 	return c.domain
 }
 
-func (c *config) UseSSL() bool {
-	return c.useSSL
+func (c *config) UseTLS() bool {
+	return c.useTLS
 }
 
 func (c *config) SkipVerifyCertificate() bool {

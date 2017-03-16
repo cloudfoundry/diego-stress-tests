@@ -15,7 +15,7 @@ import (
 
 var (
 	domain                = flag.String("domain", "", "app domain")
-	useSSL                = flag.Bool("use-ssl", false, "whether to use https when curling app endpoints")
+	useTLS                = flag.Bool("use-tls", false, "whether to use https when curling app endpoints")
 	skipVerifyCertificate = flag.Bool("skip-verify-certificate", false, "whether to ignore invalid TLS certificates")
 	numBatches            = flag.Int("n", 1, "number of batches to seed")
 	maxInFlight           = flag.Int("k", 1, "max number of cf operations in flight")
@@ -60,7 +60,7 @@ func main() {
 		*configFile,
 		*outputFile,
 		*timeout,
-		*useSSL,
+		*useTLS,
 		*skipVerifyCertificate,
 	)
 

@@ -63,13 +63,13 @@ type FakeConfig struct {
 	domainReturnsOnCall map[int]struct {
 		result1 string
 	}
-	UseSSLStub        func() bool
-	useSSLMutex       sync.RWMutex
-	useSSLArgsForCall []struct{}
-	useSSLReturns     struct {
+	UseTLSStub        func() bool
+	useTLSMutex       sync.RWMutex
+	useTLSArgsForCall []struct{}
+	useTLSReturns     struct {
 		result1 bool
 	}
-	useSSLReturnsOnCall map[int]struct {
+	useTLSReturnsOnCall map[int]struct {
 		result1 bool
 	}
 	SkipVerifyCertificateStub        func() bool
@@ -370,42 +370,42 @@ func (fake *FakeConfig) DomainReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
-func (fake *FakeConfig) UseSSL() bool {
-	fake.useSSLMutex.Lock()
-	ret, specificReturn := fake.useSSLReturnsOnCall[len(fake.useSSLArgsForCall)]
-	fake.useSSLArgsForCall = append(fake.useSSLArgsForCall, struct{}{})
-	fake.recordInvocation("UseSSL", []interface{}{})
-	fake.useSSLMutex.Unlock()
-	if fake.UseSSLStub != nil {
-		return fake.UseSSLStub()
+func (fake *FakeConfig) UseTLS() bool {
+	fake.useTLSMutex.Lock()
+	ret, specificReturn := fake.useTLSReturnsOnCall[len(fake.useTLSArgsForCall)]
+	fake.useTLSArgsForCall = append(fake.useTLSArgsForCall, struct{}{})
+	fake.recordInvocation("UseTLS", []interface{}{})
+	fake.useTLSMutex.Unlock()
+	if fake.UseTLSStub != nil {
+		return fake.UseTLSStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.useSSLReturns.result1
+	return fake.useTLSReturns.result1
 }
 
-func (fake *FakeConfig) UseSSLCallCount() int {
-	fake.useSSLMutex.RLock()
-	defer fake.useSSLMutex.RUnlock()
-	return len(fake.useSSLArgsForCall)
+func (fake *FakeConfig) UseTLSCallCount() int {
+	fake.useTLSMutex.RLock()
+	defer fake.useTLSMutex.RUnlock()
+	return len(fake.useTLSArgsForCall)
 }
 
-func (fake *FakeConfig) UseSSLReturns(result1 bool) {
-	fake.UseSSLStub = nil
-	fake.useSSLReturns = struct {
+func (fake *FakeConfig) UseTLSReturns(result1 bool) {
+	fake.UseTLSStub = nil
+	fake.useTLSReturns = struct {
 		result1 bool
 	}{result1}
 }
 
-func (fake *FakeConfig) UseSSLReturnsOnCall(i int, result1 bool) {
-	fake.UseSSLStub = nil
-	if fake.useSSLReturnsOnCall == nil {
-		fake.useSSLReturnsOnCall = make(map[int]struct {
+func (fake *FakeConfig) UseTLSReturnsOnCall(i int, result1 bool) {
+	fake.UseTLSStub = nil
+	if fake.useTLSReturnsOnCall == nil {
+		fake.useTLSReturnsOnCall = make(map[int]struct {
 			result1 bool
 		})
 	}
-	fake.useSSLReturnsOnCall[i] = struct {
+	fake.useTLSReturnsOnCall[i] = struct {
 		result1 bool
 	}{result1}
 }
@@ -665,8 +665,8 @@ func (fake *FakeConfig) Invocations() map[string][][]interface{} {
 	defer fake.prefixMutex.RUnlock()
 	fake.domainMutex.RLock()
 	defer fake.domainMutex.RUnlock()
-	fake.useSSLMutex.RLock()
-	defer fake.useSSLMutex.RUnlock()
+	fake.useTLSMutex.RLock()
+	defer fake.useTLSMutex.RUnlock()
 	fake.skipVerifyCertificateMutex.RLock()
 	defer fake.skipVerifyCertificateMutex.RUnlock()
 	fake.outputFileMutex.RLock()

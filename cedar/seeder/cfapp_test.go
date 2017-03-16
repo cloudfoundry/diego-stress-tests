@@ -150,7 +150,7 @@ var _ = Describe("Cfapp", func() {
 		})
 	})
 
-	Context("When SSL is not required", func() {
+	Context("When TLS is not required", func() {
 		BeforeEach(func() {
 			cfApp, err = NewCfApp("test-app", "random-123-domain.com", false, 1, "test-manifest.yml")
 		})
@@ -161,7 +161,7 @@ var _ = Describe("Cfapp", func() {
 		})
 	})
 
-	Context("When SSL is required", func() {
+	Context("When TLS is required", func() {
 		BeforeEach(func() {
 			cfApp, err = NewCfApp("test-app", "random-123-domain.com", true, 1, "test-manifest.yml")
 		})

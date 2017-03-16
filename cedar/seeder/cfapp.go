@@ -37,14 +37,14 @@ type CfApplication struct {
 	attemptedCurls int
 	failedCurls    int
 	domain         string
-	useSSL         bool
+	useTLS         bool
 	maxFailedCurls int
 	manifestPath   string
 }
 
-func NewCfApp(appName string, domain string, useSSL bool, maxFailedCurls int, manifestPath string) (CfApp, error) {
+func NewCfApp(appName string, domain string, useTLS bool, maxFailedCurls int, manifestPath string) (CfApp, error) {
 	protocol := "http"
-	if useSSL {
+	if useTLS {
 		protocol = "https"
 	}
 
@@ -58,7 +58,7 @@ func NewCfApp(appName string, domain string, useSSL bool, maxFailedCurls int, ma
 		appName:        appName,
 		appRoute:       *appUrl,
 		domain:         domain,
-		useSSL:         useSSL,
+		useTLS:         useTLS,
 		maxFailedCurls: maxFailedCurls,
 		manifestPath:   manifestPath,
 	}, nil
