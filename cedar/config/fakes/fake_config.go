@@ -15,10 +15,16 @@ type FakeConfig struct {
 	numBatchesReturns     struct {
 		result1 int
 	}
+	numBatchesReturnsOnCall map[int]struct {
+		result1 int
+	}
 	MaxInFlightStub        func() int
 	maxInFlightMutex       sync.RWMutex
 	maxInFlightArgsForCall []struct{}
 	maxInFlightReturns     struct {
+		result1 int
+	}
+	maxInFlightReturnsOnCall map[int]struct {
 		result1 int
 	}
 	MaxPollingErrorsStub        func() int
@@ -27,10 +33,16 @@ type FakeConfig struct {
 	maxPollingErrorsReturns     struct {
 		result1 int
 	}
+	maxPollingErrorsReturnsOnCall map[int]struct {
+		result1 int
+	}
 	AppPayloadStub        func() string
 	appPayloadMutex       sync.RWMutex
 	appPayloadArgsForCall []struct{}
 	appPayloadReturns     struct {
+		result1 string
+	}
+	appPayloadReturnsOnCall map[int]struct {
 		result1 string
 	}
 	PrefixStub        func() string
@@ -39,10 +51,16 @@ type FakeConfig struct {
 	prefixReturns     struct {
 		result1 string
 	}
+	prefixReturnsOnCall map[int]struct {
+		result1 string
+	}
 	DomainStub        func() string
 	domainMutex       sync.RWMutex
 	domainArgsForCall []struct{}
 	domainReturns     struct {
+		result1 string
+	}
+	domainReturnsOnCall map[int]struct {
 		result1 string
 	}
 	UseSSLStub        func() bool
@@ -51,10 +69,16 @@ type FakeConfig struct {
 	useSSLReturns     struct {
 		result1 bool
 	}
+	useSSLReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	SkipVerifyCertificateStub        func() bool
 	skipVerifyCertificateMutex       sync.RWMutex
 	skipVerifyCertificateArgsForCall []struct{}
 	skipVerifyCertificateReturns     struct {
+		result1 bool
+	}
+	skipVerifyCertificateReturnsOnCall map[int]struct {
 		result1 bool
 	}
 	OutputFileStub        func() string
@@ -63,10 +87,16 @@ type FakeConfig struct {
 	outputFileReturns     struct {
 		result1 string
 	}
+	outputFileReturnsOnCall map[int]struct {
+		result1 string
+	}
 	TimeoutStub        func() time.Duration
 	timeoutMutex       sync.RWMutex
 	timeoutArgsForCall []struct{}
 	timeoutReturns     struct {
+		result1 time.Duration
+	}
+	timeoutReturnsOnCall map[int]struct {
 		result1 time.Duration
 	}
 	TotalAppCountStub        func() int
@@ -75,10 +105,16 @@ type FakeConfig struct {
 	totalAppCountReturns     struct {
 		result1 int
 	}
+	totalAppCountReturnsOnCall map[int]struct {
+		result1 int
+	}
 	MaxAllowedFailuresStub        func() int
 	maxAllowedFailuresMutex       sync.RWMutex
 	maxAllowedFailuresArgsForCall []struct{}
 	maxAllowedFailuresReturns     struct {
+		result1 int
+	}
+	maxAllowedFailuresReturnsOnCall map[int]struct {
 		result1 int
 	}
 	AppTypesStub        func() []config.AppDefinition
@@ -87,17 +123,24 @@ type FakeConfig struct {
 	appTypesReturns     struct {
 		result1 []config.AppDefinition
 	}
+	appTypesReturnsOnCall map[int]struct {
+		result1 []config.AppDefinition
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeConfig) NumBatches() int {
 	fake.numBatchesMutex.Lock()
+	ret, specificReturn := fake.numBatchesReturnsOnCall[len(fake.numBatchesArgsForCall)]
 	fake.numBatchesArgsForCall = append(fake.numBatchesArgsForCall, struct{}{})
 	fake.recordInvocation("NumBatches", []interface{}{})
 	fake.numBatchesMutex.Unlock()
 	if fake.NumBatchesStub != nil {
 		return fake.NumBatchesStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.numBatchesReturns.result1
 }
@@ -115,13 +158,29 @@ func (fake *FakeConfig) NumBatchesReturns(result1 int) {
 	}{result1}
 }
 
+func (fake *FakeConfig) NumBatchesReturnsOnCall(i int, result1 int) {
+	fake.NumBatchesStub = nil
+	if fake.numBatchesReturnsOnCall == nil {
+		fake.numBatchesReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.numBatchesReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeConfig) MaxInFlight() int {
 	fake.maxInFlightMutex.Lock()
+	ret, specificReturn := fake.maxInFlightReturnsOnCall[len(fake.maxInFlightArgsForCall)]
 	fake.maxInFlightArgsForCall = append(fake.maxInFlightArgsForCall, struct{}{})
 	fake.recordInvocation("MaxInFlight", []interface{}{})
 	fake.maxInFlightMutex.Unlock()
 	if fake.MaxInFlightStub != nil {
 		return fake.MaxInFlightStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.maxInFlightReturns.result1
 }
@@ -139,13 +198,29 @@ func (fake *FakeConfig) MaxInFlightReturns(result1 int) {
 	}{result1}
 }
 
+func (fake *FakeConfig) MaxInFlightReturnsOnCall(i int, result1 int) {
+	fake.MaxInFlightStub = nil
+	if fake.maxInFlightReturnsOnCall == nil {
+		fake.maxInFlightReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.maxInFlightReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeConfig) MaxPollingErrors() int {
 	fake.maxPollingErrorsMutex.Lock()
+	ret, specificReturn := fake.maxPollingErrorsReturnsOnCall[len(fake.maxPollingErrorsArgsForCall)]
 	fake.maxPollingErrorsArgsForCall = append(fake.maxPollingErrorsArgsForCall, struct{}{})
 	fake.recordInvocation("MaxPollingErrors", []interface{}{})
 	fake.maxPollingErrorsMutex.Unlock()
 	if fake.MaxPollingErrorsStub != nil {
 		return fake.MaxPollingErrorsStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.maxPollingErrorsReturns.result1
 }
@@ -163,13 +238,29 @@ func (fake *FakeConfig) MaxPollingErrorsReturns(result1 int) {
 	}{result1}
 }
 
+func (fake *FakeConfig) MaxPollingErrorsReturnsOnCall(i int, result1 int) {
+	fake.MaxPollingErrorsStub = nil
+	if fake.maxPollingErrorsReturnsOnCall == nil {
+		fake.maxPollingErrorsReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.maxPollingErrorsReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeConfig) AppPayload() string {
 	fake.appPayloadMutex.Lock()
+	ret, specificReturn := fake.appPayloadReturnsOnCall[len(fake.appPayloadArgsForCall)]
 	fake.appPayloadArgsForCall = append(fake.appPayloadArgsForCall, struct{}{})
 	fake.recordInvocation("AppPayload", []interface{}{})
 	fake.appPayloadMutex.Unlock()
 	if fake.AppPayloadStub != nil {
 		return fake.AppPayloadStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.appPayloadReturns.result1
 }
@@ -187,13 +278,29 @@ func (fake *FakeConfig) AppPayloadReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeConfig) AppPayloadReturnsOnCall(i int, result1 string) {
+	fake.AppPayloadStub = nil
+	if fake.appPayloadReturnsOnCall == nil {
+		fake.appPayloadReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.appPayloadReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *FakeConfig) Prefix() string {
 	fake.prefixMutex.Lock()
+	ret, specificReturn := fake.prefixReturnsOnCall[len(fake.prefixArgsForCall)]
 	fake.prefixArgsForCall = append(fake.prefixArgsForCall, struct{}{})
 	fake.recordInvocation("Prefix", []interface{}{})
 	fake.prefixMutex.Unlock()
 	if fake.PrefixStub != nil {
 		return fake.PrefixStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.prefixReturns.result1
 }
@@ -211,13 +318,29 @@ func (fake *FakeConfig) PrefixReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeConfig) PrefixReturnsOnCall(i int, result1 string) {
+	fake.PrefixStub = nil
+	if fake.prefixReturnsOnCall == nil {
+		fake.prefixReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.prefixReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *FakeConfig) Domain() string {
 	fake.domainMutex.Lock()
+	ret, specificReturn := fake.domainReturnsOnCall[len(fake.domainArgsForCall)]
 	fake.domainArgsForCall = append(fake.domainArgsForCall, struct{}{})
 	fake.recordInvocation("Domain", []interface{}{})
 	fake.domainMutex.Unlock()
 	if fake.DomainStub != nil {
 		return fake.DomainStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.domainReturns.result1
 }
@@ -235,13 +358,29 @@ func (fake *FakeConfig) DomainReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeConfig) DomainReturnsOnCall(i int, result1 string) {
+	fake.DomainStub = nil
+	if fake.domainReturnsOnCall == nil {
+		fake.domainReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.domainReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *FakeConfig) UseSSL() bool {
 	fake.useSSLMutex.Lock()
+	ret, specificReturn := fake.useSSLReturnsOnCall[len(fake.useSSLArgsForCall)]
 	fake.useSSLArgsForCall = append(fake.useSSLArgsForCall, struct{}{})
 	fake.recordInvocation("UseSSL", []interface{}{})
 	fake.useSSLMutex.Unlock()
 	if fake.UseSSLStub != nil {
 		return fake.UseSSLStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.useSSLReturns.result1
 }
@@ -259,13 +398,29 @@ func (fake *FakeConfig) UseSSLReturns(result1 bool) {
 	}{result1}
 }
 
+func (fake *FakeConfig) UseSSLReturnsOnCall(i int, result1 bool) {
+	fake.UseSSLStub = nil
+	if fake.useSSLReturnsOnCall == nil {
+		fake.useSSLReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.useSSLReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *FakeConfig) SkipVerifyCertificate() bool {
 	fake.skipVerifyCertificateMutex.Lock()
+	ret, specificReturn := fake.skipVerifyCertificateReturnsOnCall[len(fake.skipVerifyCertificateArgsForCall)]
 	fake.skipVerifyCertificateArgsForCall = append(fake.skipVerifyCertificateArgsForCall, struct{}{})
 	fake.recordInvocation("SkipVerifyCertificate", []interface{}{})
 	fake.skipVerifyCertificateMutex.Unlock()
 	if fake.SkipVerifyCertificateStub != nil {
 		return fake.SkipVerifyCertificateStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.skipVerifyCertificateReturns.result1
 }
@@ -283,13 +438,29 @@ func (fake *FakeConfig) SkipVerifyCertificateReturns(result1 bool) {
 	}{result1}
 }
 
+func (fake *FakeConfig) SkipVerifyCertificateReturnsOnCall(i int, result1 bool) {
+	fake.SkipVerifyCertificateStub = nil
+	if fake.skipVerifyCertificateReturnsOnCall == nil {
+		fake.skipVerifyCertificateReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.skipVerifyCertificateReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *FakeConfig) OutputFile() string {
 	fake.outputFileMutex.Lock()
+	ret, specificReturn := fake.outputFileReturnsOnCall[len(fake.outputFileArgsForCall)]
 	fake.outputFileArgsForCall = append(fake.outputFileArgsForCall, struct{}{})
 	fake.recordInvocation("OutputFile", []interface{}{})
 	fake.outputFileMutex.Unlock()
 	if fake.OutputFileStub != nil {
 		return fake.OutputFileStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.outputFileReturns.result1
 }
@@ -307,13 +478,29 @@ func (fake *FakeConfig) OutputFileReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeConfig) OutputFileReturnsOnCall(i int, result1 string) {
+	fake.OutputFileStub = nil
+	if fake.outputFileReturnsOnCall == nil {
+		fake.outputFileReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.outputFileReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *FakeConfig) Timeout() time.Duration {
 	fake.timeoutMutex.Lock()
+	ret, specificReturn := fake.timeoutReturnsOnCall[len(fake.timeoutArgsForCall)]
 	fake.timeoutArgsForCall = append(fake.timeoutArgsForCall, struct{}{})
 	fake.recordInvocation("Timeout", []interface{}{})
 	fake.timeoutMutex.Unlock()
 	if fake.TimeoutStub != nil {
 		return fake.TimeoutStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.timeoutReturns.result1
 }
@@ -331,13 +518,29 @@ func (fake *FakeConfig) TimeoutReturns(result1 time.Duration) {
 	}{result1}
 }
 
+func (fake *FakeConfig) TimeoutReturnsOnCall(i int, result1 time.Duration) {
+	fake.TimeoutStub = nil
+	if fake.timeoutReturnsOnCall == nil {
+		fake.timeoutReturnsOnCall = make(map[int]struct {
+			result1 time.Duration
+		})
+	}
+	fake.timeoutReturnsOnCall[i] = struct {
+		result1 time.Duration
+	}{result1}
+}
+
 func (fake *FakeConfig) TotalAppCount() int {
 	fake.totalAppCountMutex.Lock()
+	ret, specificReturn := fake.totalAppCountReturnsOnCall[len(fake.totalAppCountArgsForCall)]
 	fake.totalAppCountArgsForCall = append(fake.totalAppCountArgsForCall, struct{}{})
 	fake.recordInvocation("TotalAppCount", []interface{}{})
 	fake.totalAppCountMutex.Unlock()
 	if fake.TotalAppCountStub != nil {
 		return fake.TotalAppCountStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.totalAppCountReturns.result1
 }
@@ -355,13 +558,29 @@ func (fake *FakeConfig) TotalAppCountReturns(result1 int) {
 	}{result1}
 }
 
+func (fake *FakeConfig) TotalAppCountReturnsOnCall(i int, result1 int) {
+	fake.TotalAppCountStub = nil
+	if fake.totalAppCountReturnsOnCall == nil {
+		fake.totalAppCountReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.totalAppCountReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeConfig) MaxAllowedFailures() int {
 	fake.maxAllowedFailuresMutex.Lock()
+	ret, specificReturn := fake.maxAllowedFailuresReturnsOnCall[len(fake.maxAllowedFailuresArgsForCall)]
 	fake.maxAllowedFailuresArgsForCall = append(fake.maxAllowedFailuresArgsForCall, struct{}{})
 	fake.recordInvocation("MaxAllowedFailures", []interface{}{})
 	fake.maxAllowedFailuresMutex.Unlock()
 	if fake.MaxAllowedFailuresStub != nil {
 		return fake.MaxAllowedFailuresStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.maxAllowedFailuresReturns.result1
 }
@@ -379,13 +598,29 @@ func (fake *FakeConfig) MaxAllowedFailuresReturns(result1 int) {
 	}{result1}
 }
 
+func (fake *FakeConfig) MaxAllowedFailuresReturnsOnCall(i int, result1 int) {
+	fake.MaxAllowedFailuresStub = nil
+	if fake.maxAllowedFailuresReturnsOnCall == nil {
+		fake.maxAllowedFailuresReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.maxAllowedFailuresReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeConfig) AppTypes() []config.AppDefinition {
 	fake.appTypesMutex.Lock()
+	ret, specificReturn := fake.appTypesReturnsOnCall[len(fake.appTypesArgsForCall)]
 	fake.appTypesArgsForCall = append(fake.appTypesArgsForCall, struct{}{})
 	fake.recordInvocation("AppTypes", []interface{}{})
 	fake.appTypesMutex.Unlock()
 	if fake.AppTypesStub != nil {
 		return fake.AppTypesStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.appTypesReturns.result1
 }
@@ -399,6 +634,18 @@ func (fake *FakeConfig) AppTypesCallCount() int {
 func (fake *FakeConfig) AppTypesReturns(result1 []config.AppDefinition) {
 	fake.AppTypesStub = nil
 	fake.appTypesReturns = struct {
+		result1 []config.AppDefinition
+	}{result1}
+}
+
+func (fake *FakeConfig) AppTypesReturnsOnCall(i int, result1 []config.AppDefinition) {
+	fake.AppTypesStub = nil
+	if fake.appTypesReturnsOnCall == nil {
+		fake.appTypesReturnsOnCall = make(map[int]struct {
+			result1 []config.AppDefinition
+		})
+	}
+	fake.appTypesReturnsOnCall[i] = struct {
 		result1 []config.AppDefinition
 	}{result1}
 }

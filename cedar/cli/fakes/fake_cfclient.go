@@ -23,6 +23,10 @@ type FakeCFClient struct {
 		result1 []byte
 		result2 error
 	}
+	cfReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	CleanupStub        func(ctx context.Context)
 	cleanupMutex       sync.RWMutex
 	cleanupArgsForCall []struct {
@@ -34,12 +38,16 @@ type FakeCFClient struct {
 	poolReturns     struct {
 		result1 chan string
 	}
+	poolReturnsOnCall map[int]struct {
+		result1 chan string
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeCFClient) Cf(logger lager.Logger, ctx context.Context, timeout time.Duration, args ...string) ([]byte, error) {
 	fake.cfMutex.Lock()
+	ret, specificReturn := fake.cfReturnsOnCall[len(fake.cfArgsForCall)]
 	fake.cfArgsForCall = append(fake.cfArgsForCall, struct {
 		logger  lager.Logger
 		ctx     context.Context
@@ -50,9 +58,11 @@ func (fake *FakeCFClient) Cf(logger lager.Logger, ctx context.Context, timeout t
 	fake.cfMutex.Unlock()
 	if fake.CfStub != nil {
 		return fake.CfStub(logger, ctx, timeout, args...)
-	} else {
-		return fake.cfReturns.result1, fake.cfReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.cfReturns.result1, fake.cfReturns.result2
 }
 
 func (fake *FakeCFClient) CfCallCount() int {
@@ -70,6 +80,20 @@ func (fake *FakeCFClient) CfArgsForCall(i int) (lager.Logger, context.Context, t
 func (fake *FakeCFClient) CfReturns(result1 []byte, result2 error) {
 	fake.CfStub = nil
 	fake.cfReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeCFClient) CfReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.CfStub = nil
+	if fake.cfReturnsOnCall == nil {
+		fake.cfReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.cfReturnsOnCall[i] = struct {
 		result1 []byte
 		result2 error
 	}{result1, result2}
@@ -101,14 +125,17 @@ func (fake *FakeCFClient) CleanupArgsForCall(i int) context.Context {
 
 func (fake *FakeCFClient) Pool() chan string {
 	fake.poolMutex.Lock()
+	ret, specificReturn := fake.poolReturnsOnCall[len(fake.poolArgsForCall)]
 	fake.poolArgsForCall = append(fake.poolArgsForCall, struct{}{})
 	fake.recordInvocation("Pool", []interface{}{})
 	fake.poolMutex.Unlock()
 	if fake.PoolStub != nil {
 		return fake.PoolStub()
-	} else {
-		return fake.poolReturns.result1
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.poolReturns.result1
 }
 
 func (fake *FakeCFClient) PoolCallCount() int {
@@ -120,6 +147,18 @@ func (fake *FakeCFClient) PoolCallCount() int {
 func (fake *FakeCFClient) PoolReturns(result1 chan string) {
 	fake.PoolStub = nil
 	fake.poolReturns = struct {
+		result1 chan string
+	}{result1}
+}
+
+func (fake *FakeCFClient) PoolReturnsOnCall(i int, result1 chan string) {
+	fake.PoolStub = nil
+	if fake.poolReturnsOnCall == nil {
+		fake.poolReturnsOnCall = make(map[int]struct {
+			result1 chan string
+		})
+	}
+	fake.poolReturnsOnCall[i] = struct {
 		result1 chan string
 	}{result1}
 }

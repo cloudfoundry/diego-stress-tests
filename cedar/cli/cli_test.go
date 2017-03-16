@@ -69,7 +69,6 @@ var _ = Describe("Cli", func() {
 			_, err := client.Cf(fakeLogger, ctx, 30*time.Second, "start")
 			Expect(fakeLogger).To(gbytes.Say("failed-running-cf-command"))
 			Expect(fakeLogger).To(gbytes.Say("\"log_level\":2"))
-			Expect(fakeLogger).To(gbytes.Say("FAILED"))
 			Expect(err).To(HaveOccurred())
 		})
 	})

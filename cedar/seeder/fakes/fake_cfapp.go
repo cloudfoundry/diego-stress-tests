@@ -18,10 +18,16 @@ type FakeCfApp struct {
 	appNameReturns     struct {
 		result1 string
 	}
+	appNameReturnsOnCall map[int]struct {
+		result1 string
+	}
 	AppURLStub        func() string
 	appURLMutex       sync.RWMutex
 	appURLArgsForCall []struct{}
 	appURLReturns     struct {
+		result1 string
+	}
+	appURLReturnsOnCall map[int]struct {
 		result1 string
 	}
 	PushStub        func(logger lager.Logger, ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error
@@ -36,6 +42,9 @@ type FakeCfApp struct {
 	pushReturns struct {
 		result1 error
 	}
+	pushReturnsOnCall map[int]struct {
+		result1 error
+	}
 	StartStub        func(logger lager.Logger, ctx context.Context, client cli.CFClient, skipVerifyCertificate bool, timeout time.Duration) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
@@ -46,6 +55,9 @@ type FakeCfApp struct {
 		timeout               time.Duration
 	}
 	startReturns struct {
+		result1 error
+	}
+	startReturnsOnCall map[int]struct {
 		result1 error
 	}
 	GuidStub        func(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error)
@@ -60,17 +72,25 @@ type FakeCfApp struct {
 		result1 string
 		result2 error
 	}
+	guidReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeCfApp) AppName() string {
 	fake.appNameMutex.Lock()
+	ret, specificReturn := fake.appNameReturnsOnCall[len(fake.appNameArgsForCall)]
 	fake.appNameArgsForCall = append(fake.appNameArgsForCall, struct{}{})
 	fake.recordInvocation("AppName", []interface{}{})
 	fake.appNameMutex.Unlock()
 	if fake.AppNameStub != nil {
 		return fake.AppNameStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.appNameReturns.result1
 }
@@ -88,13 +108,29 @@ func (fake *FakeCfApp) AppNameReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeCfApp) AppNameReturnsOnCall(i int, result1 string) {
+	fake.AppNameStub = nil
+	if fake.appNameReturnsOnCall == nil {
+		fake.appNameReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.appNameReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *FakeCfApp) AppURL() string {
 	fake.appURLMutex.Lock()
+	ret, specificReturn := fake.appURLReturnsOnCall[len(fake.appURLArgsForCall)]
 	fake.appURLArgsForCall = append(fake.appURLArgsForCall, struct{}{})
 	fake.recordInvocation("AppURL", []interface{}{})
 	fake.appURLMutex.Unlock()
 	if fake.AppURLStub != nil {
 		return fake.AppURLStub()
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.appURLReturns.result1
 }
@@ -112,8 +148,21 @@ func (fake *FakeCfApp) AppURLReturns(result1 string) {
 	}{result1}
 }
 
+func (fake *FakeCfApp) AppURLReturnsOnCall(i int, result1 string) {
+	fake.AppURLStub = nil
+	if fake.appURLReturnsOnCall == nil {
+		fake.appURLReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.appURLReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *FakeCfApp) Push(logger lager.Logger, ctx context.Context, client cli.CFClient, payload string, timeout time.Duration) error {
 	fake.pushMutex.Lock()
+	ret, specificReturn := fake.pushReturnsOnCall[len(fake.pushArgsForCall)]
 	fake.pushArgsForCall = append(fake.pushArgsForCall, struct {
 		logger  lager.Logger
 		ctx     context.Context
@@ -125,6 +174,9 @@ func (fake *FakeCfApp) Push(logger lager.Logger, ctx context.Context, client cli
 	fake.pushMutex.Unlock()
 	if fake.PushStub != nil {
 		return fake.PushStub(logger, ctx, client, payload, timeout)
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.pushReturns.result1
 }
@@ -148,8 +200,21 @@ func (fake *FakeCfApp) PushReturns(result1 error) {
 	}{result1}
 }
 
+func (fake *FakeCfApp) PushReturnsOnCall(i int, result1 error) {
+	fake.PushStub = nil
+	if fake.pushReturnsOnCall == nil {
+		fake.pushReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.pushReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeCfApp) Start(logger lager.Logger, ctx context.Context, client cli.CFClient, skipVerifyCertificate bool, timeout time.Duration) error {
 	fake.startMutex.Lock()
+	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		logger                lager.Logger
 		ctx                   context.Context
@@ -161,6 +226,9 @@ func (fake *FakeCfApp) Start(logger lager.Logger, ctx context.Context, client cl
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
 		return fake.StartStub(logger, ctx, client, skipVerifyCertificate, timeout)
+	}
+	if specificReturn {
+		return ret.result1
 	}
 	return fake.startReturns.result1
 }
@@ -184,8 +252,21 @@ func (fake *FakeCfApp) StartReturns(result1 error) {
 	}{result1}
 }
 
+func (fake *FakeCfApp) StartReturnsOnCall(i int, result1 error) {
+	fake.StartStub = nil
+	if fake.startReturnsOnCall == nil {
+		fake.startReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.startReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeCfApp) Guid(logger lager.Logger, ctx context.Context, client cli.CFClient, timeout time.Duration) (string, error) {
 	fake.guidMutex.Lock()
+	ret, specificReturn := fake.guidReturnsOnCall[len(fake.guidArgsForCall)]
 	fake.guidArgsForCall = append(fake.guidArgsForCall, struct {
 		logger  lager.Logger
 		ctx     context.Context
@@ -196,6 +277,9 @@ func (fake *FakeCfApp) Guid(logger lager.Logger, ctx context.Context, client cli
 	fake.guidMutex.Unlock()
 	if fake.GuidStub != nil {
 		return fake.GuidStub(logger, ctx, client, timeout)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
 	}
 	return fake.guidReturns.result1, fake.guidReturns.result2
 }
@@ -215,6 +299,20 @@ func (fake *FakeCfApp) GuidArgsForCall(i int) (lager.Logger, context.Context, cl
 func (fake *FakeCfApp) GuidReturns(result1 string, result2 error) {
 	fake.GuidStub = nil
 	fake.guidReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeCfApp) GuidReturnsOnCall(i int, result1 string, result2 error) {
+	fake.GuidStub = nil
+	if fake.guidReturnsOnCall == nil {
+		fake.guidReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.guidReturnsOnCall[i] = struct {
 		result1 string
 		result2 error
 	}{result1, result2}
