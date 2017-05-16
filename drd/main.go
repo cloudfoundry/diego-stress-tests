@@ -73,7 +73,7 @@ func main() {
 
 	aggregateSummary := diagnosis.Summary{}
 	for _, app := range apps {
-		logger := logger.Session("diagnose-app")
+		logger := logger.Session("diagnose-app", lager.Data{"name": app.Name, "guid": app.Guid})
 		desiredLRP := diagnosis.DiscoverProcessGuid(app, desiredLRPs)
 		if desiredLRP == nil {
 			logger.Error("missing-app-info", fmt.Errorf("app not found"))
