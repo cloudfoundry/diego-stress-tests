@@ -193,6 +193,11 @@ func (p *Deployer) StartApps(ctx context.Context, cancel context.CancelFunc) {
 	wg.Wait()
 }
 
+type CedarReport struct {
+	Succeeded bool              `json:"succeeded"`
+	Apps      []AppStateMetrics `json:"apps"`
+}
+
 func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc) bool {
 	logger, ok := ctx.Value("logger").(lager.Logger)
 	if !ok {
@@ -209,10 +214,7 @@ func (p *Deployer) GenerateReport(ctx context.Context, cancel context.CancelFunc
 	default:
 	}
 
-	report := struct {
-		Succeeded bool              `json:"succeeded"`
-		Apps      []AppStateMetrics `json:"apps"`
-	}{
+	report := CedarReport{
 		succeeded,
 		[]AppStateMetrics{},
 	}
