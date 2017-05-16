@@ -21,12 +21,11 @@ const (
 
 var (
 	cedarInput        = flag.String("cedarInput", "", "cedar input file")
-	outputFile        = flag.String("outputFile", "", "DrD output file")
-	bbsSkipCertVerify = flag.Bool("bbsSkipCertVerify", false, "when set to true, skips all SSL/TLS certificate verification [environment variable equivalent: BBS_SKIP_CERT_VERIFY]")
-	bbsURL            = flag.String("bbsURL", "", "URL of BBS server to target [environment variable equivalent: BBS_URL]")
-	bbsCertFile       = flag.String("bbsCertFile", "", "path to the TLS client certificate to use during mutual-auth TLS [environment variable equivalent: BBS_CERT_FILE]")
-	bbsKeyFile        = flag.String("bbsKeyFile", "", "path to the TLS client private key file to use during mutual-auth TLS [environment variable equivalent: BBS_KEY_FILE]")
-	bbsCACertFile     = flag.String("bbsCACertFile", "", "path the Certificate Authority (CA) file to use when verifying TLS keypairs [environment variable equivalent: BBS_CA_CERT_FILE]")
+	bbsSkipCertVerify = flag.Bool("bbsSkipCertVerify", false, "when set to true, skips all SSL/TLS certificate verification")
+	bbsURL            = flag.String("bbsURL", "", "URL of BBS server to target")
+	bbsCertFile       = flag.String("bbsCertFile", "", "path to the TLS client certificate to use during mutual-auth TLS")
+	bbsKeyFile        = flag.String("bbsKeyFile", "", "path to the TLS client private key file to use during mutual-auth TLS")
+	bbsCACertFile     = flag.String("bbsCACertFile", "", "path the Certificate Authority (CA) file to use when verifying TLS keypairs")
 
 	bbsClient bbs.Client
 	err       error
@@ -60,6 +59,9 @@ func main() {
 			)
 		}
 	}
+	if err != nil {
+		panic(err)
+	}
 
 	desiredLRPs, err := client.DesiredLRPs(logger, bbsClient, "")
 	if err != nil {
@@ -71,7 +73,10 @@ func main() {
 		panic(err)
 	}
 
-	aggregateSummary := diagnosis.Summary{}
+	aggregateSummary := diagnosis.Summary{
+		TrackedInstances:   []diagnosis.InstanceInfo{},
+		UntrackedInstances: []diagnosis.InstanceInfo{},
+	}
 	for _, app := range apps {
 		logger := logger.Session("diagnose-app", lager.Data{"name": app.Name, "guid": app.Guid})
 		desiredLRP := diagnosis.DiscoverProcessGuid(app, desiredLRPs)
@@ -92,5 +97,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(summaryBytes)
+	fmt.Println(string(summaryBytes))
 }

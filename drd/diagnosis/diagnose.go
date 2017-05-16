@@ -1,13 +1,15 @@
 package diagnosis
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/diego-stress-tests/drd/parser"
+)
+
+const (
+	ActualLRPStateMissing = "MISSING"
 )
 
 type TrackedSummary struct {
@@ -64,24 +66,52 @@ func DiagnoseApp(app *parser.App, desiredLRP models.DesiredLRP, actualLRPs []*mo
 		UntrackedInstances: []InstanceInfo{},
 	}
 
+	// TODO: count observed crashes
 	for _, actualLRP := range actualLRPs {
 		switch actualLRP.Instance.State {
-		case "RUNNING":
+		case models.ActualLRPStateRunning:
 			summary.InstanceSummary.Tracked.Running++
 			collectTrackedInfo(app, actualLRP, &summary)
-		case "CLAIMED":
+		case models.ActualLRPStateClaimed:
 			summary.InstanceSummary.Tracked.Claimed++
 			collectTrackedInfo(app, actualLRP, &summary)
-		case "CRASHED":
+		case models.ActualLRPStateCrashed:
 			summary.InstanceSummary.Untracked.Crashed++
 			collectUntrackedInfo(app, actualLRP, &summary)
-		case "UNCLAIMED":
+		case models.ActualLRPStateUnclaimed:
 			summary.InstanceSummary.Untracked.Unclaimed++
 			collectUntrackedInfo(app, actualLRP, &summary)
-			// TODO: count missing and observed crashes
 		}
 	}
+
+	missingInstanceCount := int(desiredLRP.Instances) - len(actualLRPs)
+	if missingInstanceCount > 0 {
+		summary.InstanceSummary.Untracked.Missing += missingInstanceCount
+		collectMissingInfo(app, desiredLRP, actualLRPs, &summary)
+	}
 	return summary
+}
+
+func JoinSummaries(summary1, summary2 Summary) Summary {
+	aggregate := Summary{
+		Timestamp: time.Now(),
+		InstanceSummary: InstanceSummary{
+			Tracked: TrackedSummary{
+				Claimed:         summary1.InstanceSummary.Tracked.Claimed + summary2.InstanceSummary.Tracked.Claimed,
+				Running:         summary1.InstanceSummary.Tracked.Running + summary2.InstanceSummary.Tracked.Running,
+				ObservedCrashes: summary1.InstanceSummary.Tracked.ObservedCrashes + summary2.InstanceSummary.Tracked.ObservedCrashes,
+			},
+			Untracked: UntrackedSummary{
+				Unclaimed: summary1.InstanceSummary.Untracked.Unclaimed + summary2.InstanceSummary.Untracked.Unclaimed,
+				Crashed:   summary1.InstanceSummary.Untracked.Crashed + summary2.InstanceSummary.Untracked.Crashed,
+				Missing:   summary1.InstanceSummary.Untracked.Missing + summary2.InstanceSummary.Untracked.Missing,
+			},
+		},
+	}
+
+	aggregate.TrackedInstances = append(summary1.TrackedInstances, summary2.TrackedInstances...)
+	aggregate.UntrackedInstances = append(summary1.UntrackedInstances, summary2.UntrackedInstances...)
+	return aggregate
 }
 
 func collectTrackedInfo(app *parser.App, actualLRP *models.ActualLRPGroup, summary *Summary) {
@@ -108,37 +138,24 @@ func collectUntrackedInfo(app *parser.App, actualLRP *models.ActualLRPGroup, sum
 	summary.UntrackedInstances = append(summary.UntrackedInstances, instanceInfo)
 }
 
-func JoinSummaries(summary1, summary2 Summary) Summary {
-	aggregate := Summary{
-		Timestamp: time.Now(),
-		InstanceSummary: InstanceSummary{
-			Tracked: TrackedSummary{
-				Claimed:         summary1.InstanceSummary.Tracked.Claimed + summary2.InstanceSummary.Tracked.Claimed,
-				Running:         summary1.InstanceSummary.Tracked.Running + summary2.InstanceSummary.Tracked.Running,
-				ObservedCrashes: summary1.InstanceSummary.Tracked.ObservedCrashes + summary2.InstanceSummary.Tracked.ObservedCrashes,
-			},
-			Untracked: UntrackedSummary{
-				Unclaimed: summary1.InstanceSummary.Untracked.Unclaimed + summary2.InstanceSummary.Untracked.Unclaimed,
-				Crashed:   summary1.InstanceSummary.Untracked.Crashed + summary2.InstanceSummary.Untracked.Crashed,
-				Missing:   summary1.InstanceSummary.Untracked.Missing + summary2.InstanceSummary.Untracked.Missing,
-			},
-		},
+func collectMissingInfo(app *parser.App, desiredLRP models.DesiredLRP, actualLRPs []*models.ActualLRPGroup, summary *Summary) {
+	actualLRPMap := make(map[int32]*models.ActualLRPGroup)
+	for _, actualLRP := range actualLRPs {
+		actualLRPMap[actualLRP.Instance.Index] = actualLRP
 	}
 
-	aggregate.TrackedInstances = append(summary1.TrackedInstances, summary2.TrackedInstances...)
-	aggregate.UntrackedInstances = append(summary1.UntrackedInstances, summary2.UntrackedInstances...)
-	return aggregate
-}
+	for index := int32(0); index < desiredLRP.Instances; index++ {
+		actual := actualLRPMap[index]
+		if actual != nil {
+			continue
+		}
 
-func WriteToFile(summary Summary, filePath string) error {
-	summaryBytes, err := json.Marshal(summary)
-	if err != nil {
-		return err
+		missingInstance := InstanceInfo{
+			Index:   index,
+			State:   ActualLRPStateMissing,
+			AppName: app.Name,
+			AppGuid: app.Guid,
+		}
+		summary.UntrackedInstances = append(summary.UntrackedInstances, missingInstance)
 	}
-
-	err = ioutil.WriteFile(filePath, summaryBytes, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
 }

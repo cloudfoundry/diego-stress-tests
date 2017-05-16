@@ -1,10 +1,6 @@
 package diagnosis_test
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -63,11 +59,7 @@ var _ = Describe("Diagnosis", func() {
 			desiredLRPs = []*models.DesiredLRP{
 				&models.DesiredLRP{
 					ProcessGuid: processGuid,
-					Instances:   1,
-				},
-				&models.DesiredLRP{
-					ProcessGuid: "not-app-guid-another-process-guid",
-					Instances:   1,
+					Instances:   2,
 				},
 			}
 		})
@@ -93,71 +85,98 @@ var _ = Describe("Diagnosis", func() {
 				appSummary diagnosis.Summary
 			)
 
-			BeforeEach(func() {
-				cellId = "cell-id"
-				instance0 = "instance-guid-0"
-				instance1 = "instance-guid-1"
+			Context("with actual lrp instances", func() {
+				BeforeEach(func() {
+					cellId = "cell-id"
+					instance0 = "instance-guid-0"
+					instance1 = "instance-guid-1"
 
-				expectedActualLRPGroups = []*models.ActualLRPGroup{
-					actualLRPInfo(processGuid, instance0, "RUNNING", cellId, 0),
-					actualLRPInfo(processGuid, instance1, "CLAIMED", cellId, 1),
-					actualLRPInfo(processGuid, "", "UNCLAIMED", "", 2),
-					actualLRPInfo(processGuid, "", "CRASHED", "", 3),
-				}
+					desiredLRPs = []*models.DesiredLRP{
+						&models.DesiredLRP{
+							ProcessGuid: processGuid,
+							Instances:   4,
+						},
+						&models.DesiredLRP{
+							ProcessGuid: "not-app-guid-another-process-guid",
+							Instances:   1,
+						},
+					}
 
-				runningInstance = instanceInfo(app.Name, app.Guid, processGuid, instance0, cellId, "RUNNING", 0)
-				claimedInstance = instanceInfo(app.Name, app.Guid, processGuid, instance1, cellId, "CLAIMED", 1)
+					expectedActualLRPGroups = []*models.ActualLRPGroup{
+						actualLRPInfo(processGuid, instance0, "RUNNING", cellId, 0),
+						actualLRPInfo(processGuid, instance1, "CLAIMED", cellId, 1),
+						actualLRPInfo(processGuid, "", "UNCLAIMED", "", 2),
+						actualLRPInfo(processGuid, "", "CRASHED", "", 3),
+					}
 
-				unclaimedInstance = instanceInfo(app.Name, app.Guid, processGuid, "", "", "UNCLAIMED", 2)
-				crashedInstance = instanceInfo(app.Name, app.Guid, processGuid, "", "", "CRASHED", 3)
+					runningInstance = instanceInfo(app.Name, app.Guid, processGuid, instance0, cellId, "RUNNING", 0)
+					claimedInstance = instanceInfo(app.Name, app.Guid, processGuid, instance1, cellId, "CLAIMED", 1)
 
-				appSummary = diagnosis.DiagnoseApp(app, *desiredLRPs[0], expectedActualLRPGroups)
+					unclaimedInstance = instanceInfo(app.Name, app.Guid, processGuid, "", "", "UNCLAIMED", 2)
+					crashedInstance = instanceInfo(app.Name, app.Guid, processGuid, "", "", "CRASHED", 3)
+				})
+
+				It("collects app summary based on desired and actual lrp", func() {
+					appSummary = diagnosis.DiagnoseApp(app, *desiredLRPs[0], expectedActualLRPGroups)
+
+					Expect(appSummary.InstanceSummary.Tracked.Running).To(Equal(1))
+					Expect(appSummary.InstanceSummary.Tracked.Claimed).To(Equal(1))
+					Expect(appSummary.InstanceSummary.Untracked.Unclaimed).To(Equal(1))
+					Expect(appSummary.InstanceSummary.Untracked.Crashed).To(Equal(1))
+
+					Expect(appSummary.TrackedInstances).To(ContainElement(runningInstance))
+					Expect(appSummary.TrackedInstances).To(ContainElement(claimedInstance))
+					Expect(appSummary.UntrackedInstances).To(ContainElement(unclaimedInstance))
+					Expect(appSummary.UntrackedInstances).To(ContainElement(crashedInstance))
+				})
 			})
 
-			It("collects app summary based on desired and actual lrp", func() {
-				Expect(appSummary.InstanceSummary.Tracked.Running).To(Equal(1))
-				Expect(appSummary.InstanceSummary.Tracked.Claimed).To(Equal(1))
-				Expect(appSummary.InstanceSummary.Untracked.Unclaimed).To(Equal(1))
-				Expect(appSummary.InstanceSummary.Untracked.Crashed).To(Equal(1))
-
-				Expect(appSummary.TrackedInstances).To(ContainElement(runningInstance))
-				Expect(appSummary.TrackedInstances).To(ContainElement(claimedInstance))
-				Expect(appSummary.UntrackedInstances).To(ContainElement(unclaimedInstance))
-				Expect(appSummary.UntrackedInstances).To(ContainElement(crashedInstance))
-			})
-
-			Context("when writing to a file", func() {
+			Context("when there are missing instances", func() {
 				var (
-					filePath, dir  string
-					expectedOutput string
-					err            error
+					untrackedInstance        diagnosis.InstanceInfo
+					anotherUntrackedInstance diagnosis.InstanceInfo
 				)
 
 				BeforeEach(func() {
-					dir, err = ioutil.TempDir("/tmp", "report")
-					Expect(err).NotTo(HaveOccurred())
+					desiredLRP := &models.DesiredLRP{
+						ProcessGuid: processGuid,
+						Instances:   3,
+					}
 
-					filePath = fmt.Sprintf("%s/summary.json", dir)
+					anotherDesiredLRP := &models.DesiredLRP{
+						ProcessGuid: "another-guid-another-process-guid",
+						Instances:   2,
+					}
 
-					content, err := ioutil.ReadFile("fixtures/output.json")
-					expectedOutput = strings.Replace(string(content), " ", "", -1)
-					expectedOutput = strings.Replace(expectedOutput, "\n", "", -1)
-					Expect(err).NotTo(HaveOccurred())
+					anotherApp := &parser.App{
+						Name: "another-app",
+						Guid: "another-guid",
+					}
+
+					expectedActualLRPGroups := []*models.ActualLRPGroup{
+						actualLRPInfo(processGuid, instance0, "RUNNING", cellId, 0),
+						actualLRPInfo(processGuid, instance1, "RUNNING", cellId, 2),
+					}
+
+					anotherExpectedActualLRPGroups := []*models.ActualLRPGroup{
+						actualLRPInfo(processGuid, instance0, "RUNNING", cellId, 0),
+					}
+
+					untrackedInstance = instanceInfo(app.Name, app.Guid, "", "", "", "MISSING", 1)
+					appSummary1 := diagnosis.DiagnoseApp(app, *desiredLRP, expectedActualLRPGroups)
+
+					anotherUntrackedInstance = instanceInfo(anotherApp.Name, anotherApp.Guid, "", "", "", "MISSING", 1)
+					appSummary2 := diagnosis.DiagnoseApp(anotherApp, *anotherDesiredLRP, anotherExpectedActualLRPGroups)
+
+					appSummary = diagnosis.JoinSummaries(appSummary1, appSummary2)
 				})
 
-				AfterEach(func() {
-					os.RemoveAll(dir)
-				})
+				It("diagnoses the missing instance", func() {
+					Expect(appSummary.InstanceSummary.Tracked.Running).To(Equal(3))
+					Expect(appSummary.InstanceSummary.Untracked.Missing).To(Equal(2))
 
-				It("generates a report", func() {
-					layout := "2006-01-02T15:04:05.999999999-07:00"
-					timeVal, err := time.Parse(layout, "2017-05-15T15:23:57.367072665-07:00")
-					appSummary.Timestamp = timeVal
-					Expect(err).NotTo(HaveOccurred())
-					diagnosis.WriteToFile(appSummary, filePath)
-					content, err := ioutil.ReadFile(filePath)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(string(content)).To(Equal(expectedOutput))
+					Expect(appSummary.UntrackedInstances).To(ContainElement(untrackedInstance))
+					Expect(appSummary.UntrackedInstances).To(ContainElement(anotherUntrackedInstance))
 				})
 			})
 		})
@@ -182,6 +201,13 @@ var _ = Describe("Diagnosis", func() {
 
 				instance0 = "instance-guid-0"
 				instance1 = "instance-guid-1"
+
+				desiredLRPs = []*models.DesiredLRP{
+					&models.DesiredLRP{
+						ProcessGuid: processGuid,
+						Instances:   1,
+					},
+				}
 
 				anotherProcessGuid = "another-process-guid"
 
