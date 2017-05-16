@@ -1,0 +1,51 @@
+{
+  "timestamp": "2017-05-15T15:23:57.367072665-07:00",
+  "instance_summary": {
+    "tracked": {
+      "claimed": 1,
+      "running": 1,
+      "observed_crashes": 0
+    },
+    "untracked": {
+      "unclaimed": 1,
+      "crashed": 1,
+      "missing": 0
+    }
+  },
+  "tracked_instances": [
+    {
+      "instance_guid": "instance-guid-0",
+      "cell_id": "cell-id",
+      "app_name": "app",
+      "app_guid": "app-guid",
+      "process_guid": "app-guid-process-guid",
+      "index": 0,
+      "state": "RUNNING"
+    },
+    {
+      "instance_guid": "instance-guid-1",
+      "cell_id": "cell-id",
+      "app_name": "app",
+      "app_guid": "app-guid",
+      "process_guid": "app-guid-process-guid",
+      "index": 1,
+      "state": "CLAIMED"
+    }
+  ],
+  "untracked_instances": [
+    {
+      "app_name": "app",
+      "app_guid": "app-guid",
+      "process_guid": "app-guid-process-guid",
+      "index": 2,
+      "state": "UNCLAIMED"
+    },
+    {
+      "app_name": "app",
+      "app_guid": "app-guid",
+      "process_guid": "app-guid-process-guid",
+      "index": 3,
+      "state": "CRASHED"
+    }
+  ]
+}
