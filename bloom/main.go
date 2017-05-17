@@ -101,7 +101,7 @@ func stopApps(rep seeder.CedarReport, maxInFlight int) {
 }
 
 func stopApp(app seeder.AppStateMetrics) {
-	if app.StartState.Succeeded {
+	if app.PushState.Succeeded {
 		log.Printf("Stopping Application: %s", *app.AppName)
 		cmd := exec.Command("cf", "stop", *app.AppName)
 		err := cmd.Run()
