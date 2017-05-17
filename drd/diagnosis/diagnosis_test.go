@@ -12,6 +12,34 @@ import (
 )
 
 var _ = Describe("Diagnosis", func() {
+	instanceInfo := func(app, appGuid, processGuid, instanceGuid, cellId, state string, index int32) *diagnosis.InstanceInfo {
+		return &diagnosis.InstanceInfo{
+			InstanceGuid: instanceGuid,
+			CellId:       cellId,
+			AppName:      app,
+			AppGuid:      appGuid,
+			ProcessGuid:  processGuid,
+			State:        state,
+			Index:        index,
+		}
+	}
+
+	actualLRPInfo := func(processGuid, instanceGuid, state, cellId string, index int32) *models.ActualLRPGroup {
+		return &models.ActualLRPGroup{
+			Instance: &models.ActualLRP{
+				ActualLRPKey: models.ActualLRPKey{
+					ProcessGuid: processGuid,
+					Index:       index,
+					Domain:      "domain",
+				},
+				ActualLRPInstanceKey: models.ActualLRPInstanceKey{
+					InstanceGuid: instanceGuid,
+					CellId:       cellId,
+				},
+				State: state,
+			},
+		}
+	}
 
 	Describe("DiagnoseProcessGuid", func() {
 		var (
@@ -19,35 +47,6 @@ var _ = Describe("Diagnosis", func() {
 			desiredLRPs []*models.DesiredLRP
 			processGuid string
 		)
-
-		instanceInfo := func(app, appGuid, processGuid, instanceGuid, cellId, state string, index int32) diagnosis.InstanceInfo {
-			return diagnosis.InstanceInfo{
-				InstanceGuid: instanceGuid,
-				CellId:       cellId,
-				AppName:      app,
-				AppGuid:      appGuid,
-				ProcessGuid:  processGuid,
-				State:        state,
-				Index:        index,
-			}
-		}
-
-		actualLRPInfo := func(processGuid, instanceGuid, state, cellId string, index int32) *models.ActualLRPGroup {
-			return &models.ActualLRPGroup{
-				Instance: &models.ActualLRP{
-					ActualLRPKey: models.ActualLRPKey{
-						ProcessGuid: processGuid,
-						Index:       index,
-						Domain:      "domain",
-					},
-					ActualLRPInstanceKey: models.ActualLRPInstanceKey{
-						InstanceGuid: instanceGuid,
-						CellId:       cellId,
-					},
-					State: state,
-				},
-			}
-		}
 
 		BeforeEach(func() {
 			processGuid = "app-guid-process-guid"
@@ -64,12 +63,6 @@ var _ = Describe("Diagnosis", func() {
 			}
 		})
 
-		Context("DiscoverProcessGuid", func() {
-			It("returns the process guid of the app", func() {
-				Expect(diagnosis.DiscoverProcessGuid(app, desiredLRPs)).To(Equal(desiredLRPs[0]))
-			})
-		})
-
 		Context("DiscoverActualLRPs", func() {
 			var (
 				expectedActualLRPGroups []*models.ActualLRPGroup
@@ -77,10 +70,10 @@ var _ = Describe("Diagnosis", func() {
 				instance0               string
 				instance1               string
 
-				runningInstance   diagnosis.InstanceInfo
-				unclaimedInstance diagnosis.InstanceInfo
-				crashedInstance   diagnosis.InstanceInfo
-				claimedInstance   diagnosis.InstanceInfo
+				runningInstance   *diagnosis.InstanceInfo
+				unclaimedInstance *diagnosis.InstanceInfo
+				crashedInstance   *diagnosis.InstanceInfo
+				claimedInstance   *diagnosis.InstanceInfo
 
 				appSummary diagnosis.Summary
 			)
@@ -133,8 +126,8 @@ var _ = Describe("Diagnosis", func() {
 
 			Context("when there are missing instances", func() {
 				var (
-					untrackedInstance        diagnosis.InstanceInfo
-					anotherUntrackedInstance diagnosis.InstanceInfo
+					untrackedInstance        *diagnosis.InstanceInfo
+					anotherUntrackedInstance *diagnosis.InstanceInfo
 				)
 
 				BeforeEach(func() {
@@ -191,7 +184,7 @@ var _ = Describe("Diagnosis", func() {
 				cellId0, cellId1     string
 				instance0, instance1 string
 
-				runningInstance0, runningInstance1, crashingInstance0 diagnosis.InstanceInfo
+				runningInstance0, runningInstance1, crashingInstance0 *diagnosis.InstanceInfo
 				expectedActualLRPGroups1, expectedActualLRPGroups2    []*models.ActualLRPGroup
 			)
 
@@ -245,8 +238,8 @@ var _ = Describe("Diagnosis", func() {
 							Crashed: 1,
 						},
 					},
-					TrackedInstances:   []diagnosis.InstanceInfo{runningInstance0, runningInstance1},
-					UntrackedInstances: []diagnosis.InstanceInfo{crashingInstance0},
+					TrackedInstances:   []*diagnosis.InstanceInfo{runningInstance0, runningInstance1},
+					UntrackedInstances: []*diagnosis.InstanceInfo{crashingInstance0},
 				}
 
 				appSummary0 := diagnosis.DiagnoseApp(app, *desiredLRPs[0], expectedActualLRPGroups1)
@@ -257,6 +250,228 @@ var _ = Describe("Diagnosis", func() {
 				Expect(aggregate.TrackedInstances).To(Equal(expectedSummary.TrackedInstances))
 				Expect(aggregate.UntrackedInstances).To(Equal(expectedSummary.UntrackedInstances))
 				Expect(aggregate.Timestamp).NotTo(BeTemporally("==", time.Time{}))
+			})
+		})
+	})
+
+	Describe("FindInstance", func() {
+		var (
+			summary                                      diagnosis.Summary
+			app, guid, processGuid, instanceGuid, cellId string
+			runningInstance0                             *diagnosis.InstanceInfo
+		)
+
+		BeforeEach(func() {
+			app, guid, processGuid, instanceGuid, cellId = "app0", "guid0", "processguid0", "instance0", "cellId0"
+			runningInstance0 = instanceInfo(app, guid, processGuid, instanceGuid, cellId, "RUNNING", 0)
+			trackedSummary := diagnosis.Summary{
+				InstanceSummary: diagnosis.InstanceSummary{
+					Tracked: diagnosis.TrackedSummary{
+						Running: 1,
+					},
+				},
+				TrackedInstances: []*diagnosis.InstanceInfo{runningInstance0},
+			}
+			summary = diagnosis.JoinSummaries(summary, trackedSummary)
+		})
+
+		Context("when the instance is not in the TrackedInstances", func() {
+			It("returns nil", func() {
+				Expect(summary.FindInstance("instance-guid-not-exist")).To(BeNil())
+			})
+		})
+
+		Context("when the instance is in the TrackedInstances", func() {
+			It("returns the instance info", func() {
+				Expect(summary.FindInstance(instanceGuid)).To(Equal(runningInstance0))
+			})
+		})
+	})
+
+	Describe("Update", func() {
+		var (
+			summary diagnosis.Summary
+		)
+
+		BeforeEach(func() {
+			summary = diagnosis.Summary{
+				Timestamp:          time.Now(),
+				InstanceSummary:    diagnosis.InstanceSummary{},
+				TrackedInstances:   []*diagnosis.InstanceInfo{},
+				UntrackedInstances: []*diagnosis.InstanceInfo{},
+			}
+		})
+
+		It("only updates state when a process guid is already known", func() {
+			actualLRP := actualLRPInfo("guid", "instance0", "RUNNING", "cell-id", 0)
+
+			Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeFalse())
+		})
+
+		Context("when an instance guid is being tracked", func() {
+			var (
+				app, guid, processGuid, instanceGuid, cellId string
+			)
+
+			Context("and the tracked instance is RUNNING", func() {
+				BeforeEach(func() {
+					app, guid, processGuid, instanceGuid, cellId = "app0", "guid0", "processguid0", "instance0", "cellId0"
+					runningInstance0 := instanceInfo(app, guid, processGuid, instanceGuid, cellId, "RUNNING", 0)
+					trackedSummary := diagnosis.Summary{
+						InstanceSummary: diagnosis.InstanceSummary{
+							Tracked: diagnosis.TrackedSummary{
+								Running: 1,
+							},
+						},
+						TrackedInstances: []*diagnosis.InstanceInfo{runningInstance0},
+					}
+					summary = diagnosis.JoinSummaries(summary, trackedSummary)
+				})
+
+				Context("and the instance is in the same state", func() {
+					It("does nothing", func() {
+						actualLRP := actualLRPInfo(processGuid, instanceGuid, "RUNNING", cellId, 0)
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeFalse())
+					})
+				})
+
+				Context("and the instance crashed", func() {
+					var actualLRP *models.ActualLRPGroup
+					BeforeEach(func() {
+						actualLRP = actualLRPInfo(processGuid, instanceGuid, "CRASHED", cellId, 0)
+					})
+
+					It("updates the TrackedInstances field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "i crashed")).To(BeTrue())
+
+						info := summary.FindInstance(actualLRP.Instance.InstanceGuid)
+						Expect(info).ToNot(BeNil())
+						Expect(info.State).To(Equal("CRASHED"))
+						Expect(info.CrashReason).ToNot(BeEmpty())
+					})
+
+					It("increments the observed crashes field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.ObservedCrashes).To(Equal(1))
+					})
+
+					It("decrements the running field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.Running).To(Equal(0))
+					})
+				})
+
+				Context("and the instance moves to a CLAIMED state", func() {
+					var actualLRP *models.ActualLRPGroup
+					BeforeEach(func() {
+						actualLRP = actualLRPInfo(processGuid, instanceGuid, "CLAIMED", cellId, 0)
+					})
+
+					It("updates the TrackedInstances field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+
+						info := summary.FindInstance(actualLRP.Instance.InstanceGuid)
+						Expect(info).ToNot(BeNil())
+						Expect(info.State).To(Equal("CLAIMED"))
+					})
+
+					It("increments the claimed field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.Claimed).To(Equal(1))
+					})
+
+					It("does not change the observed crashes field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.ObservedCrashes).To(Equal(0))
+					})
+
+					It("decrements the running field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.Running).To(Equal(0))
+					})
+				})
+			})
+
+			Context("and the tracked instance is CLAIMED", func() {
+				BeforeEach(func() {
+					app, guid, processGuid, instanceGuid, cellId = "app0", "guid0", "processguid0", "instance0", "cellId0"
+					runningInstance0 := instanceInfo(app, guid, processGuid, instanceGuid, cellId, "CLAIMED", 0)
+					trackedSummary := diagnosis.Summary{
+						InstanceSummary: diagnosis.InstanceSummary{
+							Tracked: diagnosis.TrackedSummary{
+								Claimed: 1,
+							},
+						},
+						TrackedInstances: []*diagnosis.InstanceInfo{runningInstance0},
+					}
+					summary = diagnosis.JoinSummaries(summary, trackedSummary)
+				})
+
+				Context("and the instance changed to RUNNING", func() {
+					var actualLRP *models.ActualLRPGroup
+					BeforeEach(func() {
+						actualLRP = actualLRPInfo(processGuid, instanceGuid, "RUNNING", cellId, 0)
+					})
+
+					It("updates the TrackedInstances field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+
+						info := summary.FindInstance(actualLRP.Instance.InstanceGuid)
+						Expect(info).ToNot(BeNil())
+						Expect(info.State).To(Equal("RUNNING"))
+					})
+
+					It("increments the running field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.Running).To(Equal(1))
+					})
+
+					It("decrements the claimed field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.Claimed).To(Equal(0))
+					})
+				})
+			})
+
+			Context("and the tracked instance is crashed", func() {
+				BeforeEach(func() {
+					app, guid, processGuid, instanceGuid, cellId = "app0", "guid0", "processguid0", "instance0", "cellId0"
+					runningInstance0 := instanceInfo(app, guid, processGuid, instanceGuid, cellId, "CLAIMED", 0)
+					trackedSummary := diagnosis.Summary{
+						InstanceSummary: diagnosis.InstanceSummary{
+							Tracked: diagnosis.TrackedSummary{
+								Claimed: 1,
+							},
+						},
+						TrackedInstances: []*diagnosis.InstanceInfo{runningInstance0},
+					}
+					summary = diagnosis.JoinSummaries(summary, trackedSummary)
+				})
+
+				Context("and the instance changed to RUNNING", func() {
+					var actualLRP *models.ActualLRPGroup
+					BeforeEach(func() {
+						actualLRP = actualLRPInfo(processGuid, instanceGuid, "CRASHED", cellId, 0)
+					})
+
+					It("updates the TrackedInstances field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+
+						info := summary.FindInstance(actualLRP.Instance.InstanceGuid)
+						Expect(info).ToNot(BeNil())
+						Expect(info.State).To(Equal("CRASHED"))
+					})
+
+					It("increments the running field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.ObservedCrashes).To(Equal(1))
+					})
+
+					It("decrements the claimed field", func() {
+						Expect(summary.Update(actualLRP.Instance.GetInstanceGuid(), actualLRP.Instance.GetState(), "")).To(BeTrue())
+						Expect(summary.InstanceSummary.Tracked.Claimed).To(Equal(0))
+					})
+				})
 			})
 		})
 	})

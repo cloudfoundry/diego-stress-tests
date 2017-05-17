@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/cflager"
-	"code.cloudfoundry.org/diego-stress-tests/drd/client"
 	"code.cloudfoundry.org/diego-stress-tests/drd/diagnosis"
 	"code.cloudfoundry.org/diego-stress-tests/drd/parser"
 	"code.cloudfoundry.org/lager"
@@ -17,6 +17,7 @@ import (
 const (
 	clientSessionCacheSize int = 0
 	maxIdleConnsPerHost    int = 0
+	GUIDByteLength         int = 36
 )
 
 var (
@@ -63,39 +64,93 @@ func main() {
 		panic(err)
 	}
 
-	desiredLRPs, err := client.DesiredLRPs(logger, bbsClient, "")
+	desiredLRPFilter := models.DesiredLRPFilter{Domain: ""}
+	desiredLRPs, err := bbsClient.DesiredLRPs(logger, desiredLRPFilter)
 	if err != nil {
 		panic(err)
 	}
+
+	desiredLRPSet := constructDesiredLRPsMap(desiredLRPs)
 
 	apps, err := parser.ParseAppFile(logger, *cedarInput)
 	if err != nil {
 		panic(err)
 	}
 
+	summary := aggregateSummary(logger, desiredLRPSet, apps)
+	summaryBytes, err := json.Marshal(summary)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(summaryBytes))
+
+	eventSource, err := bbsClient.SubscribeToEvents(logger)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		event, err := eventSource.Next()
+		if err != nil {
+			panic(err)
+		}
+		var instanceGuid, state, crashedReason string
+		switch e := event.(type) {
+		case *models.ActualLRPCreatedEvent:
+			instanceGuid = e.ActualLrpGroup.Instance.GetInstanceGuid()
+			state = e.ActualLrpGroup.Instance.GetState()
+		case *models.ActualLRPRemovedEvent:
+			instanceGuid = e.ActualLrpGroup.Instance.GetInstanceGuid()
+			state = e.ActualLrpGroup.Instance.GetState()
+		case *models.ActualLRPChangedEvent:
+			instanceGuid = e.After.Instance.GetInstanceGuid()
+			state = e.After.Instance.GetState()
+		case *models.ActualLRPCrashedEvent:
+			instanceGuid = e.GetInstanceGuid()
+			state = models.ActualLRPStateCrashed
+			crashedReason = e.GetCrashReason()
+		default:
+			continue
+		}
+
+		if summary.Update(instanceGuid, state, crashedReason) {
+			summaryBytes, err := json.Marshal(summary)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(string(summaryBytes))
+		}
+	}
+}
+
+func aggregateSummary(logger lager.Logger, desiredLRPSet map[string]*models.DesiredLRP, apps []*parser.App) diagnosis.Summary {
 	aggregateSummary := diagnosis.Summary{
-		TrackedInstances:   []diagnosis.InstanceInfo{},
-		UntrackedInstances: []diagnosis.InstanceInfo{},
+		TrackedInstances:   []*diagnosis.InstanceInfo{},
+		UntrackedInstances: []*diagnosis.InstanceInfo{},
 	}
 	for _, app := range apps {
 		logger := logger.Session("diagnose-app", lager.Data{"name": app.Name, "guid": app.Guid})
-		desiredLRP := diagnosis.DiscoverProcessGuid(app, desiredLRPs)
+		desiredLRP := desiredLRPSet[app.Guid]
 		if desiredLRP == nil {
 			logger.Error("missing-app-info", fmt.Errorf("app not found"))
 			continue
 		}
 
-		actualLRPs, err := client.ActualLRPGroupsForGuid(logger, bbsClient, desiredLRP.ProcessGuid)
+		actualLRPs, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, desiredLRP.ProcessGuid)
 		if err != nil {
 			logger.Error("failed-reading-actual-lrp", err)
 		}
 		summary := diagnosis.DiagnoseApp(app, *desiredLRP, actualLRPs)
 		aggregateSummary = diagnosis.JoinSummaries(aggregateSummary, summary)
 	}
+	return aggregateSummary
+}
 
-	summaryBytes, err := json.Marshal(aggregateSummary)
-	if err != nil {
-		panic(err)
+func constructDesiredLRPsMap(desiredLRPs []*models.DesiredLRP) map[string]*models.DesiredLRP {
+	desiredSet := map[string]*models.DesiredLRP{}
+	for _, d := range desiredLRPs {
+		guid := d.GetProcessGuid()[:GUIDByteLength]
+		desiredSet[guid] = d
 	}
-	fmt.Println(string(summaryBytes))
+	return desiredSet
 }

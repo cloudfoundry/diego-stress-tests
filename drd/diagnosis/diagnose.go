@@ -1,7 +1,6 @@
 package diagnosis
 
 import (
-	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -37,19 +36,52 @@ type InstanceInfo struct {
 	ProcessGuid  string `json:"process_guid"`
 	Index        int32  `json:"index"`
 	State        string `json:"state"`
+	CrashReason  string `json:"crash_reason,omitempty"`
 }
 
 type Summary struct {
 	Timestamp          time.Time       `json:"timestamp"`
 	InstanceSummary    InstanceSummary `json:"instance_summary"`
-	TrackedInstances   []InstanceInfo  `json:"tracked_instances"`
-	UntrackedInstances []InstanceInfo  `json:"untracked_instances"`
+	TrackedInstances   []*InstanceInfo `json:"tracked_instances"`
+	UntrackedInstances []*InstanceInfo `json:"untracked_instances"`
 }
 
-func DiscoverProcessGuid(app *parser.App, desiredLRPs []*models.DesiredLRP) *models.DesiredLRP {
-	for _, desiredLRP := range desiredLRPs {
-		if strings.HasPrefix(desiredLRP.ProcessGuid, app.Guid) {
-			return desiredLRP
+func (s *Summary) Update(instanceGuid, state, crashedReason string) bool {
+	info := s.FindInstance(instanceGuid)
+	if info == nil {
+		return false
+	}
+
+	if info.State == state {
+		return false
+	}
+
+	switch info.State {
+	case models.ActualLRPStateRunning:
+		s.InstanceSummary.Tracked.Running--
+	case models.ActualLRPStateClaimed:
+		s.InstanceSummary.Tracked.Claimed--
+	}
+
+	switch state {
+	case models.ActualLRPStateRunning:
+		s.InstanceSummary.Tracked.Running++
+	case models.ActualLRPStateClaimed:
+		s.InstanceSummary.Tracked.Claimed++
+	case models.ActualLRPStateCrashed:
+		s.InstanceSummary.Tracked.ObservedCrashes++
+	}
+
+	s.Timestamp = time.Now()
+	info.State = state
+	info.CrashReason = crashedReason
+	return true
+}
+
+func (s *Summary) FindInstance(instanceGuid string) *InstanceInfo {
+	for _, info := range s.TrackedInstances {
+		if info.InstanceGuid == instanceGuid {
+			return info
 		}
 	}
 	return nil
@@ -62,32 +94,31 @@ func DiagnoseApp(app *parser.App, desiredLRP models.DesiredLRP, actualLRPs []*mo
 			Tracked:   TrackedSummary{},
 			Untracked: UntrackedSummary{},
 		},
-		TrackedInstances:   []InstanceInfo{},
-		UntrackedInstances: []InstanceInfo{},
+		TrackedInstances:   []*InstanceInfo{},
+		UntrackedInstances: []*InstanceInfo{},
 	}
 
-	// TODO: count observed crashes
 	for _, actualLRP := range actualLRPs {
 		switch actualLRP.Instance.State {
 		case models.ActualLRPStateRunning:
 			summary.InstanceSummary.Tracked.Running++
-			collectTrackedInfo(app, actualLRP, &summary)
+			summary.collectTrackedInfo(app, actualLRP)
 		case models.ActualLRPStateClaimed:
 			summary.InstanceSummary.Tracked.Claimed++
-			collectTrackedInfo(app, actualLRP, &summary)
+			summary.collectTrackedInfo(app, actualLRP)
 		case models.ActualLRPStateCrashed:
 			summary.InstanceSummary.Untracked.Crashed++
-			collectUntrackedInfo(app, actualLRP, &summary)
+			summary.collectUntrackedInfo(app, actualLRP)
 		case models.ActualLRPStateUnclaimed:
 			summary.InstanceSummary.Untracked.Unclaimed++
-			collectUntrackedInfo(app, actualLRP, &summary)
+			summary.collectUntrackedInfo(app, actualLRP)
 		}
 	}
 
 	missingInstanceCount := int(desiredLRP.Instances) - len(actualLRPs)
 	if missingInstanceCount > 0 {
 		summary.InstanceSummary.Untracked.Missing += missingInstanceCount
-		collectMissingInfo(app, desiredLRP, actualLRPs, &summary)
+		summary.collectMissingInfo(app, desiredLRP, actualLRPs)
 	}
 	return summary
 }
@@ -108,37 +139,36 @@ func JoinSummaries(summary1, summary2 Summary) Summary {
 			},
 		},
 	}
-
 	aggregate.TrackedInstances = append(summary1.TrackedInstances, summary2.TrackedInstances...)
 	aggregate.UntrackedInstances = append(summary1.UntrackedInstances, summary2.UntrackedInstances...)
 	return aggregate
 }
 
-func collectTrackedInfo(app *parser.App, actualLRP *models.ActualLRPGroup, summary *Summary) {
+func (summary *Summary) collectTrackedInfo(app *parser.App, actualLRP *models.ActualLRPGroup) {
 	instanceInfo := InstanceInfo{
-		InstanceGuid: actualLRP.Instance.ActualLRPInstanceKey.InstanceGuid,
-		CellId:       actualLRP.Instance.ActualLRPInstanceKey.CellId,
-		ProcessGuid:  actualLRP.Instance.ActualLRPKey.ProcessGuid,
-		Index:        actualLRP.Instance.ActualLRPKey.Index,
-		State:        actualLRP.Instance.State,
+		InstanceGuid: actualLRP.Instance.GetInstanceGuid(),
+		CellId:       actualLRP.Instance.GetCellId(),
+		ProcessGuid:  actualLRP.Instance.GetProcessGuid(),
+		Index:        actualLRP.Instance.GetIndex(),
+		State:        actualLRP.Instance.GetState(),
 		AppName:      app.Name,
 		AppGuid:      app.Guid,
 	}
-	summary.TrackedInstances = append(summary.TrackedInstances, instanceInfo)
+	summary.TrackedInstances = append(summary.TrackedInstances, &instanceInfo)
 }
 
-func collectUntrackedInfo(app *parser.App, actualLRP *models.ActualLRPGroup, summary *Summary) {
+func (summary *Summary) collectUntrackedInfo(app *parser.App, actualLRP *models.ActualLRPGroup) {
 	instanceInfo := InstanceInfo{
-		ProcessGuid: actualLRP.Instance.ActualLRPKey.ProcessGuid,
-		Index:       actualLRP.Instance.ActualLRPKey.Index,
-		State:       actualLRP.Instance.State,
+		ProcessGuid: actualLRP.Instance.GetProcessGuid(),
+		Index:       actualLRP.Instance.GetIndex(),
+		State:       actualLRP.Instance.GetState(),
 		AppName:     app.Name,
 		AppGuid:     app.Guid,
 	}
-	summary.UntrackedInstances = append(summary.UntrackedInstances, instanceInfo)
+	summary.UntrackedInstances = append(summary.UntrackedInstances, &instanceInfo)
 }
 
-func collectMissingInfo(app *parser.App, desiredLRP models.DesiredLRP, actualLRPs []*models.ActualLRPGroup, summary *Summary) {
+func (summary *Summary) collectMissingInfo(app *parser.App, desiredLRP models.DesiredLRP, actualLRPs []*models.ActualLRPGroup) {
 	actualLRPMap := make(map[int32]*models.ActualLRPGroup)
 	for _, actualLRP := range actualLRPs {
 		actualLRPMap[actualLRP.Instance.Index] = actualLRP
@@ -156,6 +186,6 @@ func collectMissingInfo(app *parser.App, desiredLRP models.DesiredLRP, actualLRP
 			AppName: app.Name,
 			AppGuid: app.Guid,
 		}
-		summary.UntrackedInstances = append(summary.UntrackedInstances, missingInstance)
+		summary.UntrackedInstances = append(summary.UntrackedInstances, &missingInstance)
 	}
 }
