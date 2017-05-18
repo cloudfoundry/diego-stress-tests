@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -70,8 +71,7 @@ func startApps(rep seeder.CedarReport, maxInFlight int) {
 func startApp(app seeder.AppStateMetrics) {
 	if app.StartState.Succeeded {
 		log.Printf("Starting Application: %s", *app.AppName)
-		cmd := exec.Command("cf", "start", *app.AppName)
-		err := cmd.Run()
+		err := changeState(*app.AppGuid, "STARTED")
 		if err != nil {
 			log.Printf("Failed to start application: %s", err.Error())
 		} else {
@@ -103,12 +103,17 @@ func stopApps(rep seeder.CedarReport, maxInFlight int) {
 func stopApp(app seeder.AppStateMetrics) {
 	if app.PushState.Succeeded {
 		log.Printf("Stopping Application: %s", *app.AppName)
-		cmd := exec.Command("cf", "stop", *app.AppName)
-		err := cmd.Run()
+		err := changeState(*app.AppGuid, "STOPPED")
 		if err != nil {
-			log.Printf("Failed to stop application: %s", err.Error())
+			log.Printf("Failed to stop application, %s, err: %s", *app.AppName, err.Error())
 		} else {
 			log.Printf("Succeeded Stopping Application: %s", *app.AppName)
 		}
 	}
+}
+
+func changeState(appGuid, state string) error {
+	appUrl := fmt.Sprintf("/v2/apps/%s", appGuid)
+	cmd := exec.Command("cf", "curl", appUrl, "-X", "PUT", "-d", "{\"state\":\""+state+"\"}")
+	return cmd.Run()
 }
