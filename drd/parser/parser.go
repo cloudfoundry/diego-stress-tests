@@ -10,7 +10,6 @@ import (
 type App struct {
 	Name  string   `json:"app_name"`
 	Guid  string   `json:"app_guid"`
-	Url   string   `json:"app_url"`
 	Start AppStart `json:"start"`
 }
 
@@ -19,8 +18,7 @@ type AppStart struct {
 }
 
 type AppFile struct {
-	Succeeded bool   `json:"succeeded"`
-	Apps      []*App `json:"apps"`
+	Apps []*App `json:"apps"`
 }
 
 func ParseAppFile(logger lager.Logger, appFilePath string) ([]*App, error) {
