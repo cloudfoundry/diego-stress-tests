@@ -8,7 +8,7 @@ applications:
   env:
     LOGS_PER_SECOND: 0
     REQUESTS_PER_SECOND: 30
-    RESPONSE_SIZE: 10240000 # equals to 1MByte
+    RESPONSE_SIZE: 1024000 # equals to 1MByte
     MIN_REQUEST_DURATION: 0
     MAX_REQUEST_DURATION: 5
     ENDPOINT_TO_HIT: https://myapp-d068328.cfapps.eu10.hana.ondemand.com
