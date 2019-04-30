@@ -29,7 +29,43 @@ func main() {
 	if err != nil {
 		maxSecondsTilCrash = 0
 	}
+	responseSize, err := strconv.Atoi(os.Getenv("RESPONSE_SIZE"))
+	responseFile, err2 := ioutil.TempFile("", "*")
+	if err == nil && err2 == nil {
+		// close responseFile on exit and check for its returned error
+		defer func() {
+			if err := responseFile.Close(); err != nil {
+				log.Fatal(err)
+			}
+		}()
 
+		token := make([]byte, 1024)
+		for i := 0; i < (responseSize / 1024); i++ {
+			if _, err := rand.Read(token); err != nil {
+				log.Fatal(err)
+				responseSize = 0
+				break
+			}
+
+			// write a chunk
+			if _, err := responseFile.Write(token); err != nil {
+				log.Fatal(err)
+				responseSize = 0
+				break
+			}
+		}
+	} else {
+		responseSize = 0
+	}
+	minRequestDuration, err := strconv.Atoi(os.Getenv("MIN_REQUEST_DURATION"))
+	if err != nil {
+		minRequestDuration = 0
+	}
+	maxRequestDuration, err := strconv.Atoi(os.Getenv("MAX_REQUEST_DURATION"))
+	if err != nil {
+		maxRequestDuration = 0
+
+	}
 	vcapApplication := os.Getenv("VCAP_APPLICATION")
 	vcapApplicationBytes := []byte(vcapApplication)
 
@@ -75,7 +111,16 @@ func main() {
 	}()
 
 	err = http.ListenAndServe("0.0.0.0:"+os.Getenv("PORT"), http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rw.Write(vcapApplicationBytes)
+		if minRequestDuration > 0 && maxRequestDuration > 0 {
+			responseTime := rand.Intn(maxRequestDuration-minRequestDuration) + minRequestDuration
+			time.Sleep(time.Duration(responseTime) * time.Second)
+		}
+
+		if responseSize > 0 {
+			http.ServeFile(rw, r, responseFile.Name())
+		} else {
+			rw.Write(vcapApplicationBytes)
+		}
 	}))
 
 	if err != nil {
@@ -96,5 +141,11 @@ func hitEndpoint(endpoint string) {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	fmt.Fprintf(os.Stdout, "%v\n", string(body))
+
+	_, err = strconv.Atoi(os.Getenv("RESPONSE_SIZE"))
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%v\n", string(body))
+	} else {
+		fmt.Fprintf(os.Stdout, "received %d bytes\n", len(body))
+	}
 }
